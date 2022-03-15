@@ -28,8 +28,6 @@ function fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out::F
 end
 
 function fcnn_input(data)
-    # Test comment
-    # Second test comment
     return hcat(map(d -> [d.pd..., d.qd...], data)...)
 end
 

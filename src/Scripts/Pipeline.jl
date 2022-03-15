@@ -6,9 +6,9 @@ Notes:
 
 using Distributed
 using PowerModels
-using FileIO
-using JLD2
+using MLDataUtils
 using Random
+using Flux
 
 PowerModels.silence()
 
@@ -19,8 +19,6 @@ end
 
 @everywhere begin
     using MLOPF
-    using Flux.Data: DataLoader
-    using MLDataUtils
 end
 
 settings = MLOPF.get_settings()
@@ -46,14 +44,15 @@ for case in settings.PGLIB_OPF.cases
     # Prepare data for modelling: shuffle training set and create mini-batches.
     X = MLOPF.model_input(MLOPF.FullyConnected, raw_data)
     y = MLOPF.model_output(MLOPF.Global, MLOPF.Primals, raw_data)
-    train_set, valid_set, test_set = splitobs((X, y), at = Tuple(settings.DATA.splits))
+    train_set, valid_set, test_set = MLDataUtils.splitobs((X, y), at = Tuple(settings.DATA.splits))
     train_set, valid_set, test_set = MLOPF.build_minibatches(
         (train_set, valid_set, test_set),
         settings.PARAMETERS.batch_size,
         settings.DATA.shuffle,
     )
 
-    #TODO: Can save these all as one file.
+    # TODO: Can save these all as one file.
+    results = Dict()
     for seed in settings.GENERAL.seeds
 
         Random.seed!(seed)
@@ -77,25 +76,22 @@ for case in settings.PGLIB_OPF.cases
 
         # Test model on specified test set, recording elapsed time and loss.
         # TODO: We probably want to record the un-normalised test loss as well.
-        test_time, test_loss = MLOPF.test(model, test_set)
+        test_time, test_loss = MLOPF.test(model, test_set, loss_func)
 
-        # Cache results.
-        MLOPF.cache(
-            () -> Dict(
-                :target => MLOPF.Primals,
-                :encoding => MLOPF.Global,
-                :architecture => MLOPF.FullyConnected,
-                :train_loss => train_loss,
-                :valid_loss => valid_loss,
-                :test_loss => test_loss,
-                :train_time => train_time,
-                :test_time => test_time,
-                :trainable_parameters => sum(length(p) for p ∈ params(model)),
-            ),
-            "./cache/results/",
-            "$(case)__seed$(seed).jld2",
-        )()
+        # Append results for specified seed.
+        results[seed] = Dict(
+            :target => MLOPF.Primals,
+            :encoding => MLOPF.Global,
+            :architecture => MLOPF.FullyConnected,
+            :train_loss => train_loss,
+            :valid_loss => valid_loss,
+            :test_loss => test_loss,
+            :train_time => train_time,
+            :test_time => test_time,
+            :trainable_parameters => sum(length(p) for p ∈ Flux.params(model)),
+        )
     end
+    MLOPF.cache(() -> results, "./cache/results/", "$(case).jld2")()
 
 end
 

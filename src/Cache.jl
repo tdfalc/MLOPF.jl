@@ -15,10 +15,10 @@ Applies disk (and optional memory) memoization by saving the function output usi
 """
 function hash_cache(f::Function, savedir::String; use_mem_cache::Bool = true)
     mem_cache = Dict()
-    (x, args...; kwargs...) -> begin
+    (args...; kwargs...) -> begin
 
         func_name = string(f)
-        input_hash = bytes2hex(sha256(string(x, args...; kwargs...)))
+        input_hash = bytes2hex(sha256(string(args...; kwargs...)))
         cache_path = joinpath(savedir, "$(func_name)_$(input_hash).jld2")
 
         if use_mem_cache & (cache_path in keys(mem_cache))
@@ -31,7 +31,7 @@ function hash_cache(f::Function, savedir::String; use_mem_cache::Bool = true)
             return output
         end
 
-        output = f(x, args...; kwargs...)
+        output = f(args...; kwargs...)
         mem_cache[cache_path] = output
 
         if !isdir(savedir)
@@ -50,16 +50,16 @@ Applies disk memoization by saving the function output to specified directory an
     
 """
 function file_cache(f::Function, savedir::String, filename::String)
-    (x, args...; kwargs...) -> begin
+    (args...; kwargs...) -> begin
         cache_path = joinpath(savedir, filename)
         if isfile(cache_path)
             output = load(cache_path, "output")
             return output
         else
-            if !isdir(savedir)
-                mkdir(savedir)
+            if !ispath(savedir)
+                mkpath(savedir)
             end
-            output = f(x, args...; kwargs...)
+            output = f(args...; kwargs...)
             FileIO.save(cache_path, Dict("output" => output))
             return output
         end

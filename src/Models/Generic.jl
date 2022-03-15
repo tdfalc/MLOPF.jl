@@ -1,3 +1,4 @@
+using Base: @kwdef
 using Flux
 using Flux.Data: DataLoader
 using CUDA
@@ -27,19 +28,19 @@ end
 
 "Custom mse - initalised with bit vector mask to remove redunant rows when evaluating loss."
 function mean_squared_error(mask::BitVector)
-    return (y::Matrix{Float64}, ŷ::Matrix{Float64}) -> Statistics.mean(
+    return (y, ŷ) -> Statistics.mean(
         ((y, ŷ) -> sum((y[mask] - ŷ[mask]) .^ 2) / size(y[mask], 2)).((eachcol.((y, ŷ)))...),
     )
 end
 
-mutable struct Args
+@kwdef mutable struct Args
     η::Float64
     num_epochs::Int
     use_cuda::Bool
 end
 
 function train!(model::Flux.Chain{}, train_set::DataLoader, valid_set::DataLoader, loss_func; kwargs...)
-    args = Args(kwargs...)
+    args = Args(; kwargs...)
 
     if CUDA.functional() && args.use_cuda
         CUDA.allowscaler(false)

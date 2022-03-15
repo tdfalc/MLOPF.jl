@@ -53,7 +53,8 @@ function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int = 1,
         set_load_qd!(network, qd .* rand(distribution, length(qd)))
 
         # Next we intialise Ipopt and solve the updated OPF problem then check for feasibility.
-        optimizer = JuMP.with_optimizer(Ipopt.Optimizer, print_level = 0, max_iter = max_iter)
+        optimizer =
+            JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => max_iter, "print_level" => 0)
         power_model = PowerModels.instantiate_model(network, ACPPowerModel, PowerModels.build_opf)
         output = PowerModels.optimize_model!(power_model, optimizer = optimizer)
         is_feasible = validate_feasibility(output["termination_status"])
