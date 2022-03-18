@@ -27,23 +27,18 @@ function fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out::F
     return Flux.Chain(graph...)
 end
 
-function fcnn_input(data)
+function model_input(::Type{FullyConnected}, data)
     return hcat(map(d -> [d.pd..., d.qd...], data)...)
 end
 
-function fcnn_layer(index, num_layers, size_in, size_out, act, fact)
+function fully_connected_layer(index, num_layers, size_in, size_out, act, fact)
     size(i) = floor(size_in + (i / num_layers) * (size_out - size_in))
     return Layer(size(index - 1), size(index), index < num_layers ? act : fact)
 end
 
-function fcnn_layers(size_in, size_out, num_layers; act = Flux.relu, fact = Flux.sigmoid)
-    return map(l -> fcnn_layer(l, num_layers, size_in, size_out, act, fact), 1:num_layers)
-end
-
 define_layers(::Type{FullyConnected}, size_in, size_out, num_layers; act = Flux.relu, fact = Flux.sigmoid) =
-    fcnn_layers(size_in, size_out, num_layers; act = act, fact = fact)
+    return map(l -> fully_connected_layer(l, num_layers, size_in, size_out, act, fact), 1:num_layers)
 
 build_model(::Type{FullyConnected}, layers, drop_out) =
     fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out)
 
-model_input(::Type{FullyConnected}, data) = fcnn_input(data)

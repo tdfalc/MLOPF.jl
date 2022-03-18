@@ -51,7 +51,6 @@ for case in settings.PGLIB_OPF.cases
         settings.DATA.shuffle,
     )
 
-    # TODO: Can save these all as one file.
     results = Dict()
     for seed in settings.GENERAL.seeds
 

@@ -55,7 +55,7 @@ function train!(model::Flux.Chain{}, train_set::DataLoader, valid_set::DataLoade
 
     losses = []
     eval = (X, y) -> loss_func(Matrix(y), model(X))
-    callback = () -> push!(losses, [eval(train_set.data...); loss_func(valid_set.data...)])
+    callback = () -> push!(losses, [eval(train_set.data...); eval(valid_set.data...)])
 
     prog = Progress(args.num_epochs; showspeed = true)
     elapsed_time = @elapsed begin
@@ -70,7 +70,8 @@ function train!(model::Flux.Chain{}, train_set::DataLoader, valid_set::DataLoade
             end
             Flux.testmode!(model)
             callback()
-            ProgressMeter.next!(prog; showvalues = [(:train_loss, losses[end])])
+            train_loss, valid_loss = losses[end]
+            ProgressMeter.next!(prog; showvalues = [(:train_loss, train_loss), (:valid_loss, valid_loss)])
         end
     end
     return elapsed_time, collect.(zip(losses...))

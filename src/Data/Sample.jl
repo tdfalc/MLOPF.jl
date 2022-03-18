@@ -9,7 +9,7 @@ using PowerModels
 
 PowerModels.silence()
 
-struct Sample
+struct RawSample
     id::Int
     output::Dict{String,Any}
     regime::Dict{String,Vector{Bool}}
@@ -31,7 +31,7 @@ This function generates feasible samples by re-scaling each active and reactive 
 - `max_iter::Int` -- Maximum number of iterations the IPOPT algorithm should run before declaring infeasiblity.
 
 # Outputs
-- `Vector{Sample}`: Vector of feasible samples.
+- `Vector{RawSample}`: Vector of feasible samples.
 """
 function generate_samples(network::Dict{String,Any}, num_samples::Int, alpha::Float64; max_iter::Int = 100)
     @info "generating samples using $(nprocs()) process(es)"
@@ -42,24 +42,22 @@ function generate_samples(network::Dict{String,Any}, num_samples::Int, alpha::Fl
 end
 
 function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int = 1, max_iter::Int = 100)
-    pd, qd = get_load_pd(network), get_load_qd(network)
+    pd, qd = get_load(network)
     power_model, output = ACPPowerModel, Dict{String,Any}
     is_feasible = false
     while !is_feasible
         # First we sample re-scaling factors from a Uniform distribution (parameterised by alpha) 
         # and update the respective network parameters.
         distribution = Uniform(1.0 - alpha, 1.0 + alpha)
-        set_load_pd!(network, pd .* rand(distribution, length(pd)))
-        set_load_qd!(network, qd .* rand(distribution, length(qd)))
+        set_load!(network, pd .* rand(distribution, length(pd)), qd .* rand(distribution, length(qd)))
 
         # Next we intialise Ipopt and solve the updated OPF problem then check for feasibility.
-        optimizer =
-            JuMP.optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => max_iter, "print_level" => 0)
+        optimizer = optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => max_iter, "print_level" => 0)
         power_model = PowerModels.instantiate_model(network, ACPPowerModel, PowerModels.build_opf)
         output = PowerModels.optimize_model!(power_model, optimizer = optimizer)
         is_feasible = validate_feasibility(output["termination_status"])
     end
-    return Sample(
+    return RawSample(
         id,
         output,
         binding_status(power_model),
@@ -97,4 +95,17 @@ function set_load_qd!(network::Dict{String,Any}, qd::Array{Float64})
     for (i, (_, load)) in enumerate(sort(network["load"]))
         load["qd"] = qd[i]
     end
+end
+
+"Convenience function to get both the active and reactive components of bus loads."
+function get_load(network::Dict{String,Any})
+    pd = get_load_pd(network)
+    qd = get_load_qd(network)
+    return pd, qd
+end
+
+"Convenience function to set both the active and reactive components of bus loads."
+function set_load!(network::Dict{String,Any}, pd::Array{Float64}, qd::Array{Float64})
+    set_load_pd!(network, pd)
+    set_load_qd!(network, qd)
 end

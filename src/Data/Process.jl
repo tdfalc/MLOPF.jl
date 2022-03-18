@@ -4,22 +4,34 @@ using MLOPF
 
 mutable struct ProcessedSample
     id::Int
+    # Output dictionary containing information of solved OPF problem.
     output::Dict{String,Any}
+    # Congestion regime of solved OPF problem.
     regime::Vector{Bool}
+    # Bus types:
+    # - 1 No generator.
+    # - 2 At least one generator.
+    # - 3 Slack bus.
     bus_type::Vector{Float64}
+    # Bus name used for identification.
     bus_name::Vector{Float64}
+    # Bus load (active component).
     pd::Vector{Float64}
     pdmin::Vector{Float64}
     pdmax::Vector{Float64}
+    # Bus load (reactive component).
     qd::Vector{Float64}
     qdmin::Vector{Float64}
     qdmax::Vector{Float64}
+    # Voltage magnitude.
     vm::Vector{Float64}
     vmin::Vector{Float64}
     vmax::Vector{Float64}
+    # Generator injected power (active component).
     pg::Vector{Float64}
     pmin::Vector{Float64}
     pmax::Vector{Float64}
+    # Generator injected power (reactive component).
     qg::Vector{Float64}
     qmin::Vector{Float64}
     qmax::Vector{Float64}
@@ -32,13 +44,13 @@ mutable struct ProcessedSample
 end
 
 """
-    process_raw_samples(samples::Vector{MLOPF.Sample}}, network::Dict{String,Any})
+    process_raw_samples(samples::Vector{MLOPF.RawSample}}, network::Dict{String,Any})
 
 This function takes as input a vector of raw samples and the corresponding PowerModels.jl network
     and extracts relevant data into a format ready for modelling.
 
 # Arguments:
-- `samples::Vector{MLOPF.Sample}` -- Vector of samples generated using `Sampler.generate_samples`.
+- `samples::Vector{MLOPF.RawSample}` -- Vector of samples generated using `Sample.generate_samples`.
 - `network::Dict{String,Any}` -- Grid network in PowerModels.jl format.
 - `inequality_constraints::Vector{String}` -- Vector of inequality consraints of the relevant AC-OPF problem.
 
@@ -102,10 +114,6 @@ function process_raw_sample(pm::ACPPowerModel)
         bus_type = bus[:data][b]["bus_type"]
         for g in (bus_type != 1 ? bus_gens[b] : [nothing])
 
-            # Bus types:
-            # - 1 no generator
-            # - 2 at least one generator
-            # - 3 slack bus
             append!(processed.bus_type, Float64(bus_type))
             append!(processed.bus_name, Base.parse(Float64, b))
 
