@@ -6,6 +6,7 @@ using Statistics
 
 abstract type Target end
 struct Primals <: Target end
+struct NonTrivialConstraints <: Target end
 
 abstract type Encoding end
 struct Global <: Encoding end
@@ -18,8 +19,17 @@ struct Layer
     act::Function
 end
 
-function model_output(::Type{Global}, ::Type{Primals}, data)
+function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> [d.pg..., d.vm...], data)...)
+end
+
+function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{MLOPF.ProcessedSample})
+    congestion_regimes = hcat([sample.regime for sample in data]...)
+    # First we counting the number of times each constraint is binding across the whole set.
+    activation_count = sum(congestion_regimes, dims = 2)
+    #Then we flag constraints that change binding status atleast once across the whole set.
+    non_trivial_constraints = (activation_count .> 0) .& (activation_count .< length(raw_data))
+    return congestion_regimes[non_trivial_constraints[:], :]
 end
 
 function build_minibatches(data::Tuple, batch_size::Int, shuffle::Bool)

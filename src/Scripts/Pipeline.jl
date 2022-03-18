@@ -29,21 +29,21 @@ for case in settings.PGLIB_OPF.cases
     MLOPF.truncate!(network)
 
     # Generate samples and process raw data in preparation for modelling.
-    samples = MLOPF.cache(MLOPF.generate_samples, "./cache/samples/", "$(case).jld2")(
+    raw_samples = MLOPF.cache(MLOPF.generate_samples, "./cache/samples/", "$(case).jld2")(
         network,
         settings.DATA.num_samples,
         settings.DATA.alpha,
     )
-    raw_data = MLOPF.process_raw_samples(
-        samples,
+    processed_samples = MLOPF.process_raw_samples(
+        raw_samples,
         network,
         settings.DATA.inequality_constraints;
         normalise = settings.DATA.normalise,
     )
 
     # Prepare data for modelling: shuffle training set and create mini-batches.
-    X = MLOPF.model_input(MLOPF.FullyConnected, raw_data)
-    y = MLOPF.model_output(MLOPF.Global, MLOPF.Primals, raw_data)
+    X = MLOPF.model_input(MLOPF.FullyConnected, processed_samples)
+    y = MLOPF.model_output(MLOPF.Global, MLOPF.Primals, processed_samples)
     train_set, valid_set, test_set = MLDataUtils.splitobs((X, y), at = Tuple(settings.DATA.splits))
     train_set, valid_set, test_set = MLOPF.build_minibatches(
         (train_set, valid_set, test_set),

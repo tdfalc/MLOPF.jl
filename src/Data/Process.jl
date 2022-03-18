@@ -61,7 +61,7 @@ This function takes as input a vector of raw samples and the corresponding Power
 - `Vector{ProcessedSample}` -- Vector of data ready to be processed for modelling.
 """
 function process_raw_samples(
-    samples::Vector{MLOPF.Sample},
+    samples::Vector{MLOPF.RawSample},
     network::Dict{String,Any},
     inequality_constraints::Vector{String};
     normalise::Bool = true,
@@ -79,7 +79,7 @@ end
 
 "Set network active and reactive load then extract processed data from power model."
 function process_raw_sample(
-    sample::MLOPF.Sample,
+    sample::MLOPF.RawSample,
     network::Dict{String,Any},
     inequality_constraints::Vector{String},
 )

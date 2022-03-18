@@ -20,7 +20,7 @@ PGLIB_OPF:
     # - pglib_opf_case2853_sdet
 
 DATA:
-  num_samples: 10000
+  num_samples: 100
   alpha: 0.2
   shuffle: true
   splits: 

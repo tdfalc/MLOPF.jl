@@ -27,7 +27,7 @@ function fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out::F
     return Flux.Chain(graph...)
 end
 
-function model_input(::Type{FullyConnected}, data)
+function model_input(::Type{FullyConnected}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> [d.pd..., d.qd...], data)...)
 end
 

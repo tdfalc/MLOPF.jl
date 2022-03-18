@@ -39,21 +39,6 @@ function binding_status(model::JuMP.Model; threshold::Float64 = 1.0e-5)
     return status
 end
 
-function extract_non_trivial_constraints(congestion_regimes::Vector{Dict{Any,Any}})
-    # First we counting the number of times each constraint is binding across the whole set.
-    count = Dict()
-    for regime ∈ congestion_regimes
-        count = merge(+, count, regime)
-    end
-
-    # Then we flag constraints that change binding status atleast once across the whole set.
-    non_trivial_constraints = Dict()
-    for ctype ∈ keys(count)
-        non_trivial_constraints[ctype] = (count[ctype] .> 0) .& (count[ctype] .< length(congestion_regimes))
-    end
-    return non_trivial_constraints
-end
-
 function binding_status(power_model::ACPPowerModel; threshold::Float64 = 1.0e-5)
     return binding_status(power_model.model, threshold = threshold)
 end
