@@ -24,6 +24,8 @@ function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.Proces
 end
 
 function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{MLOPF.ProcessedSample})
+    # TODO: We need to move the evaluation of non-trivial constraints back to the training set to avoid
+    # data leakage.
     congestion_regimes = hcat([sample.regime for sample in data]...)
     # First we count the number of times each constraint is binding across the whole set.
     activation_count = sum(congestion_regimes, dims = 2)
