@@ -2,7 +2,7 @@
 GENERAL:
   seeds: 
     - 1
-    - 2
+  regression: false 
 
 PGLIB_OPF:
   path: "/Personal/pglib-opf/"
@@ -20,7 +20,7 @@ PGLIB_OPF:
     # - pglib_opf_case2853_sdet
 
 DATA:
-  num_samples: 100
+  num_samples: 1000
   alpha: 0.2
   shuffle: true
   splits: 
@@ -35,12 +35,12 @@ DATA:
     - (JuMP.VariableRef, MathOptInterface.LessThan{Float64}) 
 
 PARAMETERS:
-  batch_size: 100
-  learning_rate: 0.0001
+  batch_size: 10
+  learning_rate: 0.001
   use_cuda: false
   num_layers: 3
   drop_out: 0.1
-  num_epochs: 100
+  num_epochs: 200
 
 
 

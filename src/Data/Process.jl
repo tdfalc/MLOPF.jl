@@ -66,7 +66,7 @@ function process_raw_samples(
     inequality_constraints::Vector{String};
     normalise::Bool = true,
 )
-    @info "processing data using $(nprocs()) process(es)"
+    @info "processing $(length(samples)) samples using $(nprocs()) process(es)"
     processed = @showprogress pmap(
         sample -> process_raw_sample(sample, deepcopy(network), inequality_constraints),
         samples,

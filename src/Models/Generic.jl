@@ -30,7 +30,7 @@ function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vecto
     # First we count the number of times each constraint is binding across the whole set.
     activation_count = sum(congestion_regimes, dims = 2)
     # Then we flag constraints that change binding status atleast once across the whole set.
-    non_trivial_constraints = (activation_count .> 0) .& (activation_count .< length(raw_data))
+    non_trivial_constraints = (activation_count .> 0) .& (activation_count .< length(data))
     return congestion_regimes[non_trivial_constraints[:], :]
 end
 
@@ -95,7 +95,7 @@ function test(model::Flux.Chain, test_set::DataLoader, loss_func)
     elapsed_time = @elapsed begin
         for (X, y) in test_set
             ŷ = model(X)
-            append!(loss, loss_func(y, model(ŷ)))
+            append!(loss, loss_func(y, ŷ))
         end
     end
     return elapsed_time, sum(loss) / length(loss)

@@ -43,7 +43,8 @@ for case in settings.PGLIB_OPF.cases
 
     # Prepare data for modelling: shuffle training set and create mini-batches.
     X = MLOPF.model_input(MLOPF.FullyConnected, processed_samples)
-    y = MLOPF.model_output(MLOPF.Global, MLOPF.Primals, processed_samples)
+    target = settings.GENERAL.regression ? MLOPF.Primals : MLOPF.NonTrivialConstraints
+    y = MLOPF.model_output(MLOPF.Global, target, processed_samples)
     train_set, valid_set, test_set = MLDataUtils.splitobs((X, y), at = Tuple(settings.DATA.splits))
     train_set, valid_set, test_set = MLOPF.build_minibatches(
         (train_set, valid_set, test_set),
@@ -62,7 +63,11 @@ for case in settings.PGLIB_OPF.cases
         model = MLOPF.build_model(MLOPF.FullyConnected, layers, settings.PARAMETERS.drop_out)
 
         # Fit model using training and validation sets, recording elapsed time and losses.
-        loss_func = MLOPF.mean_squared_error(@. !isnan(y[:, 1]))
+        if target == MLOPF.Primals
+            loss_func = MLOPF.mean_squared_error(@. !isnan(y[:, 1]))
+        else
+            loss_func = Flux.binarycrossentropy
+        end
         train_time, (train_loss, valid_loss) = MLOPF.train!(
             model,
             train_set,

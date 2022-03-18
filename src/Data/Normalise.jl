@@ -15,7 +15,7 @@ This function normalises a vector of samples.
 """
 function normalise_samples(data::Vector{MLOPF.ProcessedSample})
 
-    @info "normalising data using $(nprocs()) process(es)"
+    @info "normalising $(length(data)) samples using $(nprocs()) process(es)"
 
     # First we get minimum and maximum values across the dataset for all active and reactive loads.
     pdmin, pdmax = get_min_max(data, :pd)

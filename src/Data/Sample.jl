@@ -34,7 +34,7 @@ This function generates feasible samples by re-scaling each active and reactive 
 - `Vector{RawSample}`: Vector of feasible samples.
 """
 function generate_samples(network::Dict{String,Any}, num_samples::Int, alpha::Float64; max_iter::Int = 100)
-    @info "generating samples using $(nprocs()) process(es)"
+    @info "generating $(num_samples) samples using $(nprocs()) process(es)"
     return @showprogress pmap(
         id -> generate_sample(deepcopy(network), alpha; id = id, max_iter = max_iter),
         1:num_samples,
