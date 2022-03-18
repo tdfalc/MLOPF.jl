@@ -38,6 +38,11 @@ function build_minibatches(data::Tuple, batch_size::Int, shuffle::Bool)
     return map(d -> DataLoader(d; batchsize = batch_size, shuffle = shuffle), data)
 end
 
+"Custom bce - weight adjusted binary crossentropy to account for class imbalance."
+function weighted_binary_crossentropy(weight::Float64)
+    return (y, ŷ; ϵ = eps(ŷ)) -> -y * log(ŷ + ϵ) * weight - (1 - y) * log(1 - ŷ + ϵ) * (1 - weight)
+end
+
 "Custom mse - initalised with bit vector mask to remove redunant rows when evaluating loss."
 function mean_squared_error(mask::BitVector)
     return (y, ŷ) -> Statistics.mean(

@@ -66,7 +66,8 @@ for case in settings.PGLIB_OPF.cases
         if target == MLOPF.Primals
             loss_func = MLOPF.mean_squared_error(@. !isnan(y[:, 1]))
         else
-            loss_func = Flux.binarycrossentropy
+            # TODO: Use correct positive class weight from training set.
+            loss_func = MLOPF.weighted_binary_crossentropy(sum(y) / length(y))
         end
         train_time, (train_loss, valid_loss) = MLOPF.train!(
             model,
