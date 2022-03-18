@@ -3,7 +3,7 @@ MLOPF.jl is a Julia package used as a basis for research concerning machine lear
 ## Outstanding Tasks
 - [x] Implement concurrent sampler
 - [x] Implement regression setting
-- [ ] Implement classification setting
+- [x] Implement classification setting
 - [x] Implement fully-connected neural network
 - [ ] Implement convolutional neural network
 - [ ] Implement graph neural networks
@@ -11,7 +11,7 @@ MLOPF.jl is a Julia package used as a basis for research concerning machine lear
 - [ ] Add prediction time analysis
 - [ ] Add convergence plots
 - [ ] Add dataframe -> latex tables script
-- [ ] Add .gitignore to bypass cache files
+- [x] Add .gitignore to bypass cache files
 
 ## Citation
 If you find MLOPF.jl useful in your work, we kindly request that you cite the following [publication](https://arxiv.org/abs/2110.00306):
