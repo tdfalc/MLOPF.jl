@@ -4,37 +4,24 @@ using MLOPF
 
 mutable struct ProcessedSample
     id::Int
-    # Output dictionary containing information of solved OPF problem.
-    output::Dict{String,Any}
-    # Congestion regime of solved OPF problem.    
-    regime::Vector{Bool}
-    # Network adjacency matrix (dense).
-    adjacency_matrix::Matrix{Float64}
-    # Bus types:
-    # - 1 No generator.
-    # - 2 At least one generator.
-    # - 3 Slack bus.
-    bus_type::Vector{Float64}
-    # Bus name used for identification.
-    bus_name::Vector{Float64}
-    # Bus load (active component).
-    pd::Vector{Float64}
+    output::Dict{String,Any} # Output dictionary containing information of solved OPF problem.
+    regime::Vector{Bool} # Congestion regime of solved OPF problem.   
+    adjacency_matrix::Matrix{Float64}  # Network adjacency matrix (dense).
+    bus_type::Vector{Float64} # # Bus types: 1 - no generator, 2 - at least one generator, 3 - slack bus.
+    bus_name::Vector{Float64} # Bus name used for identification.
+    pd::Vector{Float64} # Bus load (active component).
     pdmin::Vector{Float64}
     pdmax::Vector{Float64}
-    # Bus load (reactive component).
-    qd::Vector{Float64}
+    qd::Vector{Float64} # Bus load (reactive component).
     qdmin::Vector{Float64}
     qdmax::Vector{Float64}
-    # Voltage magnitude.
-    vm::Vector{Float64}
+    vm::Vector{Float64} # Voltage magnitude.
     vmin::Vector{Float64}
     vmax::Vector{Float64}
-    # Generator injected power (active component).
-    pg::Vector{Float64}
+    pg::Vector{Float64}  # Generator injected power (active component).
     pmin::Vector{Float64}
     pmax::Vector{Float64}
-    # Generator injected power (reactive component).
-    qg::Vector{Float64}
+    qg::Vector{Float64} # Generator injected power (reactive component).
     qmin::Vector{Float64}
     qmax::Vector{Float64}
     ProcessedSample(id::Int, congestion_regime, adjacency_matrix::Matrix{Float64}) = new(
