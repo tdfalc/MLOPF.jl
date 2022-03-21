@@ -6,8 +6,10 @@ mutable struct ProcessedSample
     id::Int
     # Output dictionary containing information of solved OPF problem.
     output::Dict{String,Any}
-    # Congestion regime of solved OPF problem.
+    # Congestion regime of solved OPF problem.    
     regime::Vector{Bool}
+    # Network adjacency matrix (dense).
+    adjacency_matrix::Matrix{Float64}
     # Bus types:
     # - 1 No generator.
     # - 2 At least one generator.
@@ -35,11 +37,12 @@ mutable struct ProcessedSample
     qg::Vector{Float64}
     qmin::Vector{Float64}
     qmax::Vector{Float64}
-    ProcessedSample() = new(
-        0,
+    ProcessedSample(id::Int, congestion_regime, adjacency_matrix::Matrix{Float64}) = new(
+        id,
         Dict{String,Any}(),
-        Vector{Bool}(),
-        (Vector{Float64}() for _ = 1:(length(fieldnames(ProcessedSample))-3))...,
+        congestion_regime,
+        adjacency_matrix,
+        (Vector{Float64}() for _ = 1:(length(fieldnames(ProcessedSample))-4))...,
     )
 end
 
@@ -83,18 +86,16 @@ function process_raw_sample(
     network::Dict{String,Any},
     inequality_constraints::Vector{String},
 )
-    MLOPF.set_load_pd!(network, Float64.(sample.load[:pd]))
-    MLOPF.set_load_qd!(network, Float64.(sample.load[:qd]))
+    MLOPF.set_load!(network, Float64.(sample.load[:pd]), Float64.(sample.load[:qd]))
     pm = PowerModels.instantiate_model(network, ACPPowerModel, PowerModels.build_opf)
     pm.solution = sample.output["solution"]
     congestion_regime = MLOPF.enumerate_constraints(sample.regime, inequality_constraints)
-    data = process_raw_sample(pm)
-    data.id, data.regime = sample.id, congestion_regime
+    data = process_raw_sample(pm, congestion_regime; id = sample.id)
     return data
 end
 
 "Extract procssed data from power model."
-function process_raw_sample(pm::ACPPowerModel)
+function process_raw_sample(pm::ACPPowerModel, congestion_regime::Vector{Bool}; id::Int = 0)
 
     bus_lookup_map = get_bus_lookup_map(pm)
 
@@ -107,11 +108,15 @@ function process_raw_sample(pm::ACPPowerModel)
     bus_gens = parse_keys(get_reference(pm, :bus_gens))
     bus_loads = parse_keys(get_reference(pm, :bus_loads))
 
+    # Get network adjacency matrix.
+    adj_mat = get_adjacency_matrix(pm)
+
     # Extract data to struct that maps each parameter to a vector of floats with length equal to the 
     # number of generators in the network.
-    processed = ProcessedSample()
-    for (b, _) in bus_lookup_map
+    processed = ProcessedSample(id, congestion_regime, adj_mat)
+    for (b, i) in bus_lookup_map
         bus_type = bus[:data][b]["bus_type"]
+        num_to_add = 0
         for g in (bus_type != 1 ? bus_gens[b] : [nothing])
 
             append!(processed.bus_type, Float64(bus_type))
@@ -139,10 +144,23 @@ function process_raw_sample(pm::ACPPowerModel)
             append!(processed.qmin, no_generator ? NaN : gen[:data][g]["qmin"])
             append!(processed.qmax, no_generator ? NaN : gen[:data][g]["qmax"])
 
-        end
-    end
+            num_to_add += 1
 
+        end
+        # Finally, we need to augment the adjacency matrix to contain new rows and columns in accoradance
+        # with the rows and columns added for each generator.
+        # TODO: Remove code duplication to find length of generators.
+        adj_mat = vcat(adj_mat[1:(i-1), :], repeat(adj_mat[i, :]', num_to_add), adj_mat[(i+1):end, :])
+        adj_mat = hcat(adj_mat[:, 1:(i-1)], repeat(adj_mat[:, i]', num_to_add)', adj_mat[:, (i+1):end])
+    end
+    processed.adjacency_matrix = adj_mat
     return processed
+end
+
+"Get (sparse) adjacency matrix using PowerModels API and convert to dense matrix."
+function get_adjacency_matrix(pm::ACPPowerModel)
+    adj_mat, _ = PowerModels._adjacency_matrix(pm)
+    return Matrix(adj_mat)
 end
 
 "Build bus lookup map - required due to inconsitency between name and id of buses."

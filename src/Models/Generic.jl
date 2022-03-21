@@ -105,3 +105,7 @@ function test(model::Flux.Chain, test_set::DataLoader, loss_func)
     end
     return elapsed_time, sum(loss) / length(loss)
 end
+
+function model_factory()
+    return "model"
+end
