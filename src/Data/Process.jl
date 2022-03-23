@@ -7,7 +7,7 @@ mutable struct ProcessedSample
     output::Dict{String,Any} # Output dictionary containing information of solved OPF problem.
     regime::Vector{Bool} # Congestion regime of solved OPF problem.   
     adjacency_matrix::Matrix{Float64}  # Network adjacency matrix (dense).
-    bus_type::Vector{Float64} # # Bus types: 1 - no generator, 2 - at least one generator, 3 - slack bus.
+    bus_type::Vector{Float64} # Bus types: 1 - no generator, 2 - at least one generator, 3 - slack bus.
     bus_name::Vector{Float64} # Bus name used for identification.
     pd::Vector{Float64} # Bus load (active component).
     pdmin::Vector{Float64}

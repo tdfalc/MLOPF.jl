@@ -3,19 +3,25 @@ using MLOPF
 
 struct FullyConnected <: NeuralNetwork end
 
+struct FullyConnectedLayer
+    in::Int
+    out::Int
+    act::Function
+end
+
 """
     fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out::Float64)
 
 This function builds a fully-connected neural network graph using Flux's Chain type.
     
 # Arguments:
-    - `layers::Vector{MLOPF.Layer} -- Layers defining the neural network architecture.
+    - `layers::Vector{MLOPF.FullyConnectedLayer} -- Layers defining the neural network architecture.
     - `drop_out::Float64{}` -- Probability assigned to drop out layer.
     
 # Outputs
     - `Flux.Chain`: Fully-connected neural network.
 """
-function fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out::Float64)
+function fully_connected_neural_network(layers::Vector{MLOPF.FullyConnectedLayer}, drop_out::Float64)
     graph = []
     for (i, layer) in enumerate(layers)
         push!(graph, Flux.Dense(layer.in, layer.out, layer.act))
@@ -31,14 +37,20 @@ function model_input(::Type{FullyConnected}, data::Vector{MLOPF.ProcessedSample}
     return hcat(map(d -> [d.pd..., d.qd...], data)...)
 end
 
-function fully_connected_layer(index, num_layers, size_in, size_out, act, fact)
+function fully_connected_layer(index::Int, num_layers::Int, size_in::Int, size_out::Int, act, fact)
     size(i) = floor(size_in + (i / num_layers) * (size_out - size_in))
-    return Layer(size(index - 1), size(index), index < num_layers ? act : fact)
+    return FullyConnectedLayer(size(index - 1), size(index), index < num_layers ? act : fact)
 end
 
-define_layers(::Type{FullyConnected}, size_in, size_out, num_layers; act = Flux.relu, fact = Flux.sigmoid) =
-    return map(l -> fully_connected_layer(l, num_layers, size_in, size_out, act, fact), 1:num_layers)
+define_layers(
+    ::Type{FullyConnected},
+    size_in::Int,
+    size_out::Int,
+    num_layers::Int;
+    act = Flux.relu,
+    fact = Flux.sigmoid,
+) = return map(l -> fully_connected_layer(l, num_layers, size_in, size_out, act, fact), 1:num_layers)
 
-build_model(::Type{FullyConnected}, layers, drop_out) =
-    fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out)
+build_model(::Type{FullyConnected}, layers::Vector{FullyConnectedLayer}, drop_out::Float64) =
+    fully_connected_neural_network(layers::Vector{MLOPF.FullyConnectedLayer}, drop_out)
 

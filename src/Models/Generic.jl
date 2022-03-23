@@ -13,12 +13,6 @@ struct Global <: Encoding end
 
 abstract type NeuralNetwork end
 
-struct Layer
-    in::Int
-    out::Int
-    act::Function
-end
-
 function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> [d.pg..., d.vm...], data)...)
 end
@@ -32,7 +26,7 @@ function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vecto
     # Then we flag constraints that change binding status atleast once across the whole set.
     non_trivial_constraints = (activation_count .> 0) .& (activation_count .< length(data))
     return congestion_regimes[non_trivial_constraints[:], :]
-end
+ends
 
 function build_minibatches(data::Tuple, batch_size::Int, shuffle::Bool)
     return map(d -> DataLoader(d; batchsize = batch_size, shuffle = shuffle), data)

@@ -41,7 +41,7 @@ for case in settings.PGLIB_OPF.cases
         normalise = settings.DATA.normalise,
     )
 
-    # Prepare data for modelling: shuffle training set and create mini-batches.
+    # # Prepare data for modelling: shuffle training set and create mini-batches.
     X = MLOPF.model_input(MLOPF.FullyConnected, processed_samples)
     target = settings.GENERAL.regression ? MLOPF.Primals : MLOPF.NonTrivialConstraints
     y = MLOPF.model_output(MLOPF.Global, target, processed_samples)

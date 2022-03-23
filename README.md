@@ -5,7 +5,7 @@ MLOPF.jl is a Julia package used as a basis for research concerning machine lear
 - [x] Implement regression setting
 - [x] Implement classification setting
 - [x] Implement fully-connected neural network
-- [ ] Implement convolutional neural network
+- [x] Implement convolutional neural network
 - [ ] Implement graph neural networks
 - [x] Add weighted binary cross entropy objective
 - [ ] Add weighted adjacency matrix (nodal admittance matrix)
