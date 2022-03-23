@@ -28,9 +28,9 @@ This function builds a convolutional neural network graph using Flux's Chain typ
 function convolutional_neural_network(
     layers::Vector,
     drop_out::Float64,
-    kernel::Tuple{int},
+    kernel::Tuple{Int},
     pad::Tuple{Int},
-    pool:Tuple{int},
+    pool::Tuple{Int},
 )
     graph = []
     for layer ∈ layers
@@ -67,7 +67,7 @@ end
 
 define_layers(
     ::Type{MLOPF.Convolutional},
-    size_in::Tuple{int},
+    size_in::Tuple{Int},
     size_out::Int,
     num_layers::Int;
     act = Flux.relu,
@@ -79,8 +79,8 @@ build_model(
     ::Type{Convolutional},
     layers::Vector,
     drop_out::Float64,
-    kernel::Tuple{int},
+    kernel::Tuple{Int},
     pad::Tuple{Int},
-    pool:Tuple{int},
+    pool::Tuple{Int},
 ) = convolutional_neural_network(layers::Vector{MLOPF.ConvolutionalLayer}, drop_out, kernel, pad, pool)
 
