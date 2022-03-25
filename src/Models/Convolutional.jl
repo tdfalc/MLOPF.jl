@@ -74,7 +74,6 @@ define_layers(
     fact = Flux.sigmoid,
 ) = return map(l -> convolutional_layer(l, num_layers, size_in, size_out, act, fact), 1:(num_layers+1))
 
-
 build_model(
     ::Type{Convolutional},
     layers::Vector,
