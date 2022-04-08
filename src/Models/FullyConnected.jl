@@ -2,12 +2,7 @@ using Flux
 using MLOPF
 
 struct FullyConnected <: NeuralNetwork end
-
-struct FullyConnectedLayer
-    in::Int
-    out::Int
-    act::Function
-end
+struct FullyConnectedLayer <: NeuralNetworkLayer end
 
 """
     fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out::Float64)
@@ -17,20 +12,23 @@ This function builds a fully-connected neural network graph using Flux's Chain t
 # Arguments:
     - `layers::Vector{MLOPF.FullyConnectedLayer} -- Layers defining the neural network architecture.
     - `drop_out::Float64{}` -- Probability assigned to drop out layer.
+
+# Keywords
+    - `drop_out::Float64{}` -- Probability assigned to drop out layer. Defaults to 0.
     
 # Outputs
     - `Flux.Chain`: Fully-connected neural network.
 """
-function fully_connected_neural_network(layers::Vector{MLOPF.FullyConnectedLayer}, drop_out::Float64)
-    graph = []
-    for (i, layer) in enumerate(layers)
-        push!(graph, Flux.Dense(layer.in, layer.out, layer.act))
+function fully_connected_neural_network(layers::Vector{MLOPF.FullyConnectedLayer}; drop_out::Float64 = 0.0)
+    chain = []
+    for (i, layer) ∈ enumerate(layers)
+        push!(chain, Flux.Dense(layer.in, layer.out, layer.act))
         if i < length(layers)
-            push!(graph, Flux.BatchNorm(layer.out))
-            push!(graph, Flux.Dropout(drop_out))
+            push!(chain, Flux.BatchNorm(layer.out))
+            push!(chain, Flux.Dropout(drop_out))
         end
     end
-    return Flux.Chain(graph...)
+    return Flux.Chain(chain...)
 end
 
 function model_input(::Type{FullyConnected}, data::Vector{MLOPF.ProcessedSample})

@@ -1,3 +1,5 @@
+"""Generic functions used to build, train and test each neural network architecture"""
+
 using Base: @kwdef
 using Flux
 using Flux.Data: DataLoader
@@ -10,20 +12,31 @@ struct NonTrivialConstraints <: Target end
 
 abstract type Encoding end
 struct Global <: Encoding end
+struct Local <: Encoding end
 
 abstract type NeuralNetwork end
+
+struct NeuralNetworkLayer
+    in::Int
+    out::Int
+    act::Function
+end
 
 function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> [d.pg..., d.vm...], data)...)
 end
 
+function model_output(::Type{Local}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
+    return hcat(map(d -> hcat(d.pg, d.vm)', data))
+end
+
 function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{MLOPF.ProcessedSample})
-    # TODO: We need to move the evaluation of non-trivial constraints back to the training set to avoid
-    # data leakage.
+    # TODO: I need to move the determination of non-trivial constraints back to the training
+    # TODO: set to avoid this data leakage.
     congestion_regimes = hcat([sample.regime for sample in data]...)
-    # First we count the number of times each constraint is binding across the whole set.
+    # First we count the number of times each constraint is binding.
     activation_count = sum(congestion_regimes, dims = 2)
-    # Then we flag constraints that change binding status atleast once across the whole set.
+    # Then we flag constraints that change binding status atleast once.
     non_trivial_constraints = (activation_count .> 0) .& (activation_count .< length(data))
     return congestion_regimes[non_trivial_constraints[:], :]
 end
@@ -44,16 +57,17 @@ function mean_squared_error(mask::BitVector)
     )
 end
 
-@kwdef mutable struct Args
-    η::Float64
-    num_epochs::Int
-    use_cuda::Bool
-end
+function train!(
+    model::Flux.Chain{},
+    train_set::DataLoader,
+    valid_set::DataLoader,
+    objective,
+    num_epochs::Int,
+    learning_rate::Float64,
+    use_cuda::Bool,
+)
 
-function train!(model::Flux.Chain{}, train_set::DataLoader, valid_set::DataLoader, loss_func; kwargs...)
-    args = Args(; kwargs...)
-
-    if CUDA.functional() && args.use_cuda
+    if CUDA.functional() && use_cuda
         CUDA.allowscaler(false)
         device = gpu
     else
@@ -61,21 +75,19 @@ function train!(model::Flux.Chain{}, train_set::DataLoader, valid_set::DataLoade
     end
 
     model = model |> device
-    opt, θ = ADAM(args.η), Flux.params(model)
+    opt, θ = ADAM(learning_rate), Flux.params(model)
     @info "commencing training procedure on $(device)"
 
-    losses = []
-    eval = (X, y) -> loss_func(Matrix(y), model(X))
+    losses, eval = [], (X, y) -> objective(Matrix(y), model(X))
     callback = () -> push!(losses, [eval(train_set.data...); eval(valid_set.data...)])
 
-    prog = Progress(args.num_epochs; showspeed = true)
+    prog = Progress(anum_epochs; showspeed = true)
     elapsed_time = @elapsed begin
-        for _ = 1:args.num_epochs
+        for _ = 1:num_epochs
             for (X, y) in train_set
                 X, y = X |> device, y |> device
                 gradients = Flux.gradient(θ) do
-                    ŷ = model(X)
-                    loss_func(y, ŷ)
+                    eval(model(X), y)
                 end
                 Flux.update!(opt, θ, gradients)
             end
@@ -88,13 +100,13 @@ function train!(model::Flux.Chain{}, train_set::DataLoader, valid_set::DataLoade
     return elapsed_time, collect.(zip(losses...))
 end
 
-function test(model::Flux.Chain, test_set::DataLoader, loss_func)
+function test(model::Flux.Chain, test_set::DataLoader, objective)
     Flux.testmode!(model)
     loss = []
     elapsed_time = @elapsed begin
         for (X, y) in test_set
             ŷ = model(X)
-            append!(loss, loss_func(y, ŷ))
+            append!(loss, objective(y, ŷ))
         end
     end
     return elapsed_time, sum(loss) / length(loss)

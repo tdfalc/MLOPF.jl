@@ -3,25 +3,35 @@ using GeometricFlux
 using MLOPF
 
 abstract type Graph <: NeuralNetwork end
-abstract type ChebConv <: Graph end
+struct GraphLayer <: NeuralNetworkLayer end
 
-struct GraphLayer
-    in::Int
-    out::Int
-    act::Function
-end
+"""
+    convolutional_neural_network(layers::Vector{MLOPF.Layer}, drop_out::Float64)
 
-function graph_neural_network(layers::Vector, drop_out::Float64, kernel::Int)
-    graph = []
+This function builds a convolutional neural network graph using Flux's Chain type.
+    
+# Arguments:
+    - `layers::Vector -- Layers defining the neural network architecture.
+
+# Keywords
+    - `conv::` -- Probability assigned to drop out layer. Defaults to 0.
+    - `drop_out::Float64{}` -- Probability assigned to drop out layer. Defaults to 0.
+
+# Outputs
+    - `Flux.Chain`: Convolutional neural network.
+"""
+function graph_neural_network(layers::Vector; conv = ChebConv, drop_out::Float64 = 0.0, kwargs...)
+    chain = []
     for layer ∈ layers
         if isa(layer, MLOPF.GraphLayer)
-            push!(graph, GeometricFlux.ChebConv(layer.in => layer.out, kernel))
-            # TODO: Figure out how to add batch norm to GNN
-            #push!(graph, Flux.BatchNorm(layer.out))
-            push!(graph, Flux.Dropout(drop_out))
+            push!(graph, conv(layer.in => layer.out; kwargs...))
+            # Try instance norm
+            # Does batchnorm even work here? As we have a single instance.
+            # push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.BatchNorm(layer.out)(x.nf)))
+            push!(chain, x -> FeaturedGraph(x.graph.S, nf = Flux.dropout(x.nf, drop_out)))
         else
-            push!(graph, x -> vec(x.nf'))
-            push!(graph, Flux.Dense(layer.in, layer.out, layer.act))
+            push!(chain, x -> vec(x.nf'))
+            push!(chain, Flux.Dense(layer.in, layer.out, layer.act))
         end
     end
     return Flux.Chain(graph...)
