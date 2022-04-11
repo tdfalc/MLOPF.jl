@@ -22,17 +22,21 @@ struct NeuralNetworkLayer
     act::Function
 end
 
-function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
-    return hcat(map(d -> [d.pg..., d.vm...], data)...)
-end
-
 function model_output(::Type{Local}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> hcat(d.pg, d.vm)', data))
 end
 
+function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
+    return hcat(map(d -> [d.pg..., d.vm...], data)...)
+end
+
+function get_size(num_channels, i)
+    return size(i) = i == 0 ? num_channels : ceil(Int, num_channels / 4) * 4 * 2^(i - 1)
+end
+
 function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{MLOPF.ProcessedSample})
-    # TODO: I need to move the determination of non-trivial constraints back to the training
-    # TODO: set to avoid this data leakage.
+    # TODO: Move the determination of non-trivial constraints back to the training set to avoid 
+    # TODO: this data leakage.
     congestion_regimes = hcat([sample.regime for sample in data]...)
     # First we count the number of times each constraint is binding.
     activation_count = sum(congestion_regimes, dims = 2)
@@ -57,22 +61,23 @@ function mean_squared_error(mask::BitVector)
     )
 end
 
+function instantiate_device(use_cuda::Bool)
+    if CUDA.functional() && use_cuda
+        CUDA.allowscaler(false)
+        return gpu
+    end
+    return cpu
+end
+
 function train!(
     model::Flux.Chain{},
+    device,
     train_set::DataLoader,
     valid_set::DataLoader,
     objective,
     num_epochs::Int,
     learning_rate::Float64,
-    use_cuda::Bool,
 )
-
-    if CUDA.functional() && use_cuda
-        CUDA.allowscaler(false)
-        device = gpu
-    else
-        device = cpu
-    end
 
     model = model |> device
     opt, θ = ADAM(learning_rate), Flux.params(model)
