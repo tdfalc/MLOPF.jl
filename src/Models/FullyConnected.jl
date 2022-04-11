@@ -5,50 +5,49 @@ struct FullyConnected <: NeuralNetwork end
 struct FullyConnectedLayer <: NeuralNetworkLayer end
 
 """
-    fully_connected_neural_network(layers::Vector{MLOPF.Layer}, drop_out::Float64)
+    fully_connected_neural_network(
+        drop_out::Float64;
+        size_in::Tuple{int},
+        size_out::int,
+        num_layers::int;
+        act::Function = Flux.relu,
+        fact::Function = Flux.sigmoid,
+        kwargs...,
+    ) where {l<:GeometricFlux.AbstractGraphLayer}
 
-This function builds a fully-connected neural network graph using Flux's Chain type.
+This function builds a fully-connected neural network graph as a Flux.jl chain type.
     
 # Arguments:
-    - `layers::Vector{MLOPF.FullyConnectedLayer} -- Layers defining the neural network architecture.
-    - `drop_out::Float64{}` -- Probability assigned to drop out layer.
+    - `Type{l}` -- Type of graph neural network layer from GeometrixFlux.jl package.
+    - `size_in::int` -- Network input size (number of channels).
+    - `size_out::int` -- Network output size.
+    - `num_layers::int` -- Number of hidden layers.
+    - `act::Function` -- Activation function (on hidden layer).
+    - `fact::Function` -- Final activation function (on output layer).
 
-# Keywords
-    - `drop_out::Float64{}` -- Probability assigned to drop out layer. Defaults to 0.
-    
 # Outputs
     - `Flux.Chain`: Fully-connected neural network.
 """
-function fully_connected_neural_network(layers::Vector{MLOPF.FullyConnectedLayer}; drop_out::Float64 = 0.0)
+function fully_connected_neural_network(
+    size_in::int,
+    size_out::int,
+    drop_out::Float64,
+    num_layers::int;
+    act::Function = Flux.relu,
+    fact::Function = Flux.sigmoid,
+    kwargs...,
+)
     chain = []
-    for (i, layer) ∈ enumerate(layers)
-        push!(chain, Flux.Dense(layer.in, layer.out, layer.act))
-        if i < length(layers)
-            push!(chain, Flux.BatchNorm(layer.out))
-            push!(chain, Flux.Dropout(drop_out))
-        end
+    for i ∈ 1:(num_layers)
+        size(i) = floor(size_in + (i / num_layers) * (size_out - size_in))
+        push!(chain, Flux.Dense(size(i - 1), size(i), act), kwargs...)
+        push!(chain, x -> Flux.BatchNorm(size(x))(x))
+        push!(chain, Flux.Dropout(drop_out))
     end
+    push!(chain, Flux.Dense(size(num_layers), size(num_layers + 1), fact))
     return Flux.Chain(chain...)
 end
 
 function model_input(::Type{FullyConnected}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> [d.pd..., d.qd...], data)...)
 end
-
-function fully_connected_layer(index::Int, num_layers::Int, size_in::Int, size_out::Int, act, fact)
-    size(i) = floor(size_in + (i / num_layers) * (size_out - size_in))
-    return FullyConnectedLayer(size(index - 1), size(index), index < num_layers ? act : fact)
-end
-
-define_layers(
-    ::Type{FullyConnected},
-    size_in::Int,
-    size_out::Int,
-    num_layers::Int;
-    act = Flux.relu,
-    fact = Flux.sigmoid,
-) = return map(l -> fully_connected_layer(l, num_layers, size_in, size_out, act, fact), 1:num_layers)
-
-build_model(::Type{FullyConnected}, layers::Vector{FullyConnectedLayer}, drop_out::Float64) =
-    fully_connected_neural_network(layers::Vector{MLOPF.FullyConnectedLayer}, drop_out)
-
