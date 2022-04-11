@@ -47,10 +47,7 @@ function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int = 1,
     is_feasible, output = false, Dict{String,Any}
     while !is_feasible
         # First we randomly remove a line from the network to emulate N-1 contingency.
-        if nmo
-            branch = rand(1:length(nw["branch"]))
-            remove_branch!(nw, branch)
-        end
+        nmo ? remove_branch!(nw, rand(1:length(nw["branch"]))) : nothing
 
         # Next we sample re-scaling factors from a Uniform distribution (parameterised by alpha) 
         # and update the respective network parameters.
