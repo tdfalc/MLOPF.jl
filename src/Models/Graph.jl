@@ -6,41 +6,46 @@ abstract type Graph <: NeuralNetwork end
 
 """
     graph_neural_network(
-        ::Type{l},
-        size_in::Tuple{int},
-        size_out::int,
-        num_layers::int;
+        size_in::Tuple{Int},
+        size_out::Int,
+        num_layers::Int;
+        drop_out::Float64 = 0.0,
         act::Function = Flux.relu,
         fact::Function = Flux.sigmoid,
+        conv::Type{T} = GeometricFlux.GCNConv,
         kwargs...,
-    ) where {l<:GeometricFlux.AbstractGraphLayer}
+    ) where {T<:GeometricFlux.AbstractGraphLayer}
 
 This function builds a graph neural network graph as a Flux.jl chain type.
     
-# Arguments:
-    - `Type{l}` -- Type of graph neural network layer from GeometrixFlux.jl package.
-    - `size_in::Tuple{int}` -- Network input size (number of channels).
-    - `size_out::int}` -- Network output size.
-    - `num_layers::int` -- Number of hidden layers.
-    - `act::Function` -- Activation function (on hidden layer).
-    - `fact::Function` -- Final activation function (on output layer).
+    # Arguments:
+    - `size_in::Int` -- Network input size (number of channels).
+    - `size_out::Int` -- Network output size.
+    - `num_layers::Int` -- Number of hidden layers.
+
+# Keywords:
+    - `drop_out::Float64` -- Probability assigned to drop out layer. Defaults to 0.
+    - `act::Function` -- Activation function (on hidden layer). Defaults to ReLU.
+    - `fact::Function` -- Final activation function (on output layer). Defaults to Sigmoid.
+    - `conv::Type{T} ` -- Type of graph neural network layer from GeometricFlux.jl (src/layers/conv.jl) package.
 
 # Outputs
     - `Flux.Chain`: Graph neural network.
 """
 function graph_neural_network(
-    ::Type{l},
-    size_in::Int,
-    size_out::int,
-    num_layers::int;
+    size_in::Tuple{Int},
+    size_out::Int,
+    num_layers::Int;
+    drop_out::Float64 = 0.0,
     act::Function = Flux.relu,
     fact::Function = Flux.sigmoid,
+    conv::Type{T} = GeometricFlux.GCNConv,
     kwargs...,
-) where {l<:GeometricFlux.AbstractGraphLayer}
+) where {T<:GeometricFlux.AbstractGraphLayer}
+    size(i::Int) = i == 0 ? size_in : ceil(Int, size_in / 4) * 4 * 2^(i - 1)
     chain = []
     for i ∈ 1:(num_layers)
-        size(i::int) = i == 0 ? size_in : ceil(Int, size_in / 4) * 4 * 2^(i - 1)
-        push!(chain, l(size(i - 1) => sizr(i), act; kwargs...))
+        push!(chain, conv(size(i - 1) => size(i), act; kwargs...))
         push!(chain, x -> FeaturedGraph(x.graph.S, nf = Flux.BatchNorm(layer.out)(x.nf))) # Check this
         push!(chain, x -> FeaturedGraph(x.graph.S, nf = Flux.dropout(x.nf, drop_out)))
     end
@@ -53,14 +58,6 @@ function model_input(::Type{Graph}, data::Vector{MLOPF.ProcessedSample})
     return map(x -> FeaturedGraph(x.adjacency_matrix, nf = hcat([x.pd, x.qd]...)'), data)
 end
 
-function model_factory(
-    la::Type{l},
-    size_in::Int,
-    size_out::int,
-    num_layers::int;
-    act::Function = Flux.relu,
-    fact::Function = Flux.sigmoid,
-    kwargs...,
-) where {l<:GeometricFlux.AbstractGraphLayer}
-    return graph_neural_network(la, size_in, size_out, num_layers; act = act, fact = fact, kwargs...)
+function model_factory(::Type{Graph}, size_in::Int, size_out::Int, num_layers::Int; kwargs...)
+    return graph_neural_network(size_in, size_out, num_layers; kwargs...)
 end

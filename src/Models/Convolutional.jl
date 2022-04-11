@@ -6,45 +6,52 @@ struct Convolutional <: NeuralNetwork end
 
 """
     convolutional_neural_network(
-        drop_out::Float64;
-        size_in::Tuple{int},
-        size_out::int,
-        num_layers::int;
-        kernel::Tuple{Int} = (3, 3),
-        pool::Tuple{Int} = (2, 2),
+        size_in::Tuple{Int},
+        size_out::Int,
+        num_layers::Int;
+        drop_out::Float64 = 0.0,
         act::Function = Flux.relu,
         fact::Function = Flux.sigmoid,
+        kernel::Tuple{Int} = (3, 3),
+        pad::Tuple{Int} = (1, 1),
+        pool::Tuple{Int} = (2, 2),
         kwargs...,
-    ) where {l<:GeometricFlux.AbstractGraphLayer}
+    )
 
 This function builds a convolutional neural network graph as a Flux.jl chain type.
     
 # Arguments:
-    - `Type{l}` -- Type of graph neural network layer from GeometrixFlux.jl package.
-    - `size_in::Tuple{int}` -- Network input size (number of channels).
-    - `size_out::int}` -- Network output size.
-    - `num_layers::int` -- Number of hidden layers.
-    - `act::Function` -- Activation function (on hidden layer).
-    - `fact::Function` -- Final activation function (on output layer).
+    - `size_in::Int` -- Network input size (number of channels).
+    - `size_out::Int` -- Network output size.
+    - `num_layers::Int` -- Number of hidden layers.
+
+# Keywords:
+    - `drop_out::Float64` -- Probability assigned to drop out layer. Defaults to 0.
+    - `act::Function` -- Activation function (on hidden layer). Defaults to ReLU.
+    - `fact::Function` -- Final activation function (on output layer). Defaults to Sigmoid.
+    - `kernel::Tuple{Int}` -- Size of convolutional filter. Defaults to (3, 3).
+    - `pad::Tuple{Int}` -- Specifies the number of elements added around the image borders. Defaults to (1, 1).
+    - `pool::Tuple{Int}` -- Size of pooling layers used to reduce the dimensions of the feature maps. Defaults to (2, 2).
 
 # Outputs
     - `Flux.Chain`: Convolutional neural network.
 """
 function convolutional_neural_network(
-    drop_out::Float64,
-    size_in::Int,
-    size_out::int,
-    num_layers::int;
-    kernel::Tuple{Int} = (3, 3),
-    pool::Tuple{Int} = (2, 2),
+    size_in::Tuple{Int},
+    size_out::Int,
+    num_layers::Int;
+    drop_out::Float64 = 0.0,
     act::Function = Flux.relu,
     fact::Function = Flux.sigmoid,
+    kernel::Tuple{Int} = (3, 3),
+    pad::Tuple{Int} = (1, 1),
+    pool::Tuple{Int} = (2, 2),
     kwargs...,
 )
+    size(i::Int) = i == 0 ? size_in : ceil(Int, size_in / 4) * 4 * 2^(i - 1)
     chain = []
     for i ∈ 1:(num_layers)
-        size(i) = i == 0 ? size_in : ceil(Int, size_in / 4) * 4 * 2^(i - 1)
-        push!(chain, Flux.Conv(kernel, size(i - 1) => size(i), act; kwargs...))
+        push!(chain, Flux.Conv(kernel, size(i - 1) => size(i), act; pad = pad, kwargs...))
         push!(chain, x -> Flux.maxpool(x, pool))
         push!(chain, x -> Flux.BatchNorm(size(x))(x))
         push!(chain, Flux.Dropout(drop_out))
@@ -58,27 +65,6 @@ function model_input(::Type{Convolutional}, data::Vector{MLOPF.ProcessedSample})
     return cat(map(d -> cat(d.adjacency_matrix, diagm(d.pd), diagm(d.qd), dims = 3), data)..., dims = 4)
 end
 
-function model_factory(
-    ::Type{Convolutional},
-    drop_out::Float64;
-    size_in::Int,
-    size_out::int,
-    num_layers::int;
-    kernel::Tuple{Int} = (3, 3),
-    pool::Tuple{Int} = (2, 2),
-    act::Function = Flux.relu,
-    fact::Function = Flux.sigmoid,
-    kwargs...,
-)
-    return convolutional_neural_network(
-        drop_out,
-        size_in,
-        size_out,
-        num_layers;
-        kernel = kernel,
-        pool = pool,
-        act = act,
-        fact = fact,
-        kwargs...,
-    )
+function model_factory(::Type{Convolutional}, size_in::Int, size_out::Int, num_layers::Int; kwargs...)
+    return convolutional_neural_network(size_in, size_out, num_layers; kwargs...)
 end
