@@ -4,28 +4,34 @@ using MLOPF
 
 abstract type Graph <: NeuralNetwork end
 
-function model_input(::Type{Graph}, data::Vector{MLOPF.ProcessedSample})
-    return map(x -> FeaturedGraph(x.adjacency_matrix, nf = hcat([x.pd, x.qd]...)'), data)
-end
 
 """
-    convolutional_neural_network(layers::Vector{MLOPF.Layer}, drop_out::Float64)
+    graph_neural_network(
+        ::Type{l},
+        size_in::Tuple{int},
+        size_out::int,
+        num_layers::int;
+        act::Function = Flux.relu,
+        fact::Function = Flux.sigmoid,
+        kwargs...,
+    ) where {l<:GeometricFlux.AbstractGraphLayer}
 
-This function builds a convolutional neural network graph using Flux's Chain type.
+This function builds a graph neural network graph as a Flux.jl chain type.
     
 # Arguments:
-    - `layers::Vector -- Layers defining the neural network architecture.
-
-# Keywords
-    - `conv::` -- Probability assigned to drop out layer. Defaults to 0.
-    - `drop_out::Float64{}` -- Probability assigned to drop out layer. Defaults to 0.
+    - `Type{l}` -- Type of graph neural network layer from GeometrixFlux.jl package.
+    - `size_in::Tuple{int}` -- Network input size (num_channels, num_nodes).
+    - `size_out::int}` -- Network output size.
+    - `num_layers::int` -- Number of hidden layers.
+    - `act::Function` -- Activation function (on hidden layer).
+    - `fact::Function` -- Final activation function (on output layer).
 
 # Outputs
-    - `Flux.Chain`: Convolutional neural network.
+    - `Flux.Chain`: Graph neural network.
 """
 function graph_neural_network(
     ::Type{l},
-    size_in::int,
+    size_in::Tuple{int},
     size_out::int,
     num_layers::int;
     act::Function = Flux.relu,
@@ -43,4 +49,8 @@ function graph_neural_network(
     push!(chain, x -> vec(x.nf'))
     push!(chain, Flux.Dense(num_nodes * size(index - 1), size_out, fact))
     return Flux.Chain(chain...)
+end
+
+function model_input(::Type{Graph}, data::Vector{MLOPF.ProcessedSample})
+    return map(x -> FeaturedGraph(x.adjacency_matrix, nf = hcat([x.pd, x.qd]...)'), data)
 end
