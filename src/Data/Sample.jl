@@ -41,21 +41,26 @@ function generate_samples(network::Dict{String,Any}, num_samples::Int, alpha::Fl
     )
 end
 
-function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int = 1, max_iter::Int = 100)
+function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int = 1, max_iter::Int = 100, nmo::Bool = False)
     pd, qd = get_load(network)
-    power_model, output = ACPPowerModel, Dict{String,Any}
-    is_feasible = false
+    power_model, nw = ACPPowerModel, deepcopy(network)
+    is_feasible, output = false, Dict{String,Any}
     while !is_feasible
-        # First we sample re-scaling factors from a Uniform distribution (parameterised by alpha) 
+        # First we randomly remove a line from the network to emulate N-1 contingency.
+        branch = rand(1:length(nw["branch"]))
+        remove_branch!(nw, branch)
+
+        # Next we sample re-scaling factors from a Uniform distribution (parameterised by alpha) 
         # and update the respective network parameters.
         distribution = Uniform(1.0 - alpha, 1.0 + alpha)
-        set_load!(network, pd .* rand(distribution, length(pd)), qd .* rand(distribution, length(qd)))
+        set_load!(nw, pd .* rand(distribution, length(pd)), qd .* rand(distribution, length(qd)))
 
-        # Next we intialise Ipopt and solve the updated OPF problem then check for feasibility.
+        # Finally we intialise Ipopt and solve the updated OPF problem then check for feasibility.
         optimizer = optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => max_iter, "print_level" => 0)
-        power_model = PowerModels.instantiate_model(network, ACPPowerModel, PowerModels.build_opf)
+        power_model = PowerModels.instantiate_model(nw, ACPPowerModel, PowerModels.build_opf)
         output = PowerModels.optimize_model!(power_model, optimizer = optimizer)
         is_feasible = validate_feasibility(output["termination_status"])
+        nw = deepcopy(network)
     end
     return RawSample(
         id,
@@ -67,6 +72,14 @@ end
 
 function validate_feasibility(status::MOI.TerminationStatusCode)
     return (status == MOI.LOCALLY_SOLVED) || (status == MOI.OPTIMAL)
+end
+
+"Proxy for removing branch from AC-OPF problem whilst preserving topology."
+function remove_branch!(network::Dict{String,Any}, id::Int; br_r::Float64 = 9e9)
+    network["branch"][id]["b_fr"] = 0.0
+    network["branch"][id]["b_to"] = 0.0
+    network["branch"][id]["br_x"] = 0.0
+    network["branch"][id]["br_r"] = br_r
 end
 
 function get_load_pd(network::Dict{String,Any})
