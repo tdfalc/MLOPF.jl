@@ -16,22 +16,12 @@ struct Local <: Encoding end
 
 abstract type NeuralNetwork end
 
-struct NeuralNetworkLayer
-    in::Int
-    out::Int
-    act::Function
-end
-
 function model_output(::Type{Local}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> hcat(d.pg, d.vm)', data))
 end
 
 function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> [d.pg..., d.vm...], data)...)
-end
-
-function get_size(num_channels, i)
-    return size(i) = i == 0 ? num_channels : ceil(Int, num_channels / 4) * 4 * 2^(i - 1)
 end
 
 function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{MLOPF.ProcessedSample})

@@ -2,7 +2,6 @@ using Flux
 using MLOPF
 
 struct FullyConnected <: NeuralNetwork end
-struct FullyConnectedLayer <: NeuralNetworkLayer end
 
 """
     fully_connected_neural_network(
