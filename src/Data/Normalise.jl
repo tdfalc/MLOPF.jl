@@ -23,11 +23,7 @@ function normalise_samples(data::Vector{MLOPF.ProcessedSample})
 
     # TODO: Move normalisation to after train/test split to avoid data leakage.
     return @showprogress pmap(
-        d -> normalise_sample(
-            d,
-            Dict(:pdmin => pdmin, :pdmax => pdmax),
-            Dict(:qdmin => qdmin, :qdmax => qdmax),
-        ),
+        d -> normalise_sample(d, Dict(:pdmin => pdmin, :pdmax => pdmax), Dict(:qdmin => qdmin, :qdmax => qdmax)),
         data,
     )
 end

@@ -3,8 +3,7 @@ using JLD2
 using FileIO
 
 cache(f::Function, savedir::String, filename::String) = file_cache(f, savedir, filename)
-cache(f::Function, savedir::String; use_mem_cache::Bool = true) =
-    hash_cache(f, savedir, use_mem_cache = use_mem_cache)
+cache(f::Function, savedir::String; use_mem_cache::Bool = true) = hash_cache(f, savedir, use_mem_cache = use_mem_cache)
 
 """
     hash_cache(f::function, savedir::String; use_mem_cache::bool=true)

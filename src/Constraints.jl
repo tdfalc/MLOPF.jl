@@ -43,9 +43,6 @@ function binding_status(power_model::ACPPowerModel; threshold::Float64 = 1.0e-5)
     return binding_status(power_model.model, threshold = threshold)
 end
 
-function enumerate_constraints(
-    congestion_regime::Dict{String,Vector{Bool}},
-    inequality_constraints::Vector{String},
-)
+function enumerate_constraints(congestion_regime::Dict{String,Vector{Bool}}, inequality_constraints::Vector{String})
     return vcat(map(c -> congestion_regime[c], inequality_constraints)...)
 end

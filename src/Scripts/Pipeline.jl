@@ -46,11 +46,8 @@ for case in settings.PGLIB_OPF.cases
     target = settings.GENERAL.regression ? MLOPF.Primals : MLOPF.NonTrivialConstraints
     y = MLOPF.model_output(MLOPF.Global, target, processed_samples)
     train_set, valid_set, test_set = MLDataUtils.splitobs((X, y), at = Tuple(settings.DATA.splits))
-    train_set, valid_set, test_set = MLOPF.build_minibatches(
-        (train_set, valid_set, test_set),
-        settings.PARAMETERS.batch_size,
-        settings.DATA.shuffle,
-    )
+    train_set, valid_set, test_set =
+        MLOPF.build_minibatches((train_set, valid_set, test_set), settings.PARAMETERS.batch_size, settings.DATA.shuffle)
 
     results = Dict()
     for seed in settings.GENERAL.seeds

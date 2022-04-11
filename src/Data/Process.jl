@@ -57,10 +57,8 @@ function process_raw_samples(
     normalise::Bool = true,
 )
     @info "processing $(length(samples)) samples using $(nprocs()) process(es)"
-    processed = @showprogress pmap(
-        sample -> process_raw_sample(sample, deepcopy(network), inequality_constraints),
-        samples,
-    )
+    processed =
+        @showprogress pmap(sample -> process_raw_sample(sample, deepcopy(network), inequality_constraints), samples)
     if normalise
         return MLOPF.normalise_samples(processed)
     end
@@ -68,11 +66,7 @@ function process_raw_samples(
 end
 
 "Set network active and reactive load then extract processed data from power model."
-function process_raw_sample(
-    sample::MLOPF.RawSample,
-    network::Dict{String,Any},
-    inequality_constraints::Vector{String},
-)
+function process_raw_sample(sample::MLOPF.RawSample, network::Dict{String,Any}, inequality_constraints::Vector{String})
     MLOPF.set_load!(network, Float64.(sample.load[:pd]), Float64.(sample.load[:qd]))
     pm = PowerModels.instantiate_model(network, ACPPowerModel, PowerModels.build_opf)
     pm.solution = sample.output["solution"]
