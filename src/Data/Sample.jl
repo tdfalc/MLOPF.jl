@@ -43,11 +43,14 @@ end
 
 function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int = 1, max_iter::Int = 100, nmo::Bool = False)
     pd, qd = get_load(network)
-    power_model, nw = ACPPowerModel, deepcopy(network)
+    power_model = ACPPowerModel
     is_feasible, output = false, Dict{String,Any}
     while !is_feasible
-        # First we randomly remove a line from the network to emulate N-1 contingency.
-        nmo ? remove_branch!(nw, rand(1:length(nw["branch"]))) : nothing
+        # First we randomly silence a branch within the network to emulate N-1 contingency.
+        branch, source_id = nothing, nothing
+        if nmo
+            branch, source_id = silence_random_branch!(network)
+        end
 
         # Next we sample re-scaling factors from a Uniform distribution (parameterised by alpha) 
         # and update the respective network parameters.
@@ -59,7 +62,9 @@ function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int = 1,
         power_model = PowerModels.instantiate_model(nw, ACPPowerModel, PowerModels.build_opf)
         output = PowerModels.optimize_model!(power_model, optimizer = optimizer)
         is_feasible = validate_feasibility(output["termination_status"])
-        nw = deepcopy(network)
+
+        # Re-instate to silenced branch so we don't modify the original network.
+        network["branch"][source_id] = branch
     end
     return RawSample(
         id,
@@ -73,8 +78,16 @@ function validate_feasibility(status::MOI.TerminationStatusCode)
     return (status == MOI.LOCALLY_SOLVED) || (status == MOI.OPTIMAL)
 end
 
-"Proxy for removing branch from AC-OPF problem whilst preserving topology."
-function remove_branch!(network::Dict{String,Any}, id::Int; br_r::Float64 = 9e9)
+"Proxy for randomly removing branch from AC-OPF problem whilst preserving topology."
+function silence_random_branch!(network::Dict{String,Any}; br_r::Float64 = 9e9)
+    num_branches = length(network["branch"])
+    source_id = string(rand(1:num_branches))
+    branch = network["branch"][source_id]
+    silence_branch!(network, source_id; br_r = br_r)
+    return branch, source_id
+end
+
+function silence_branch!(network::Dict{String,Any}, id::String; br_r::Float64 = 9e9)
     network["branch"][id]["b_fr"] = 0.0
     network["branch"][id]["b_to"] = 0.0
     network["branch"][id]["br_x"] = 0.0
