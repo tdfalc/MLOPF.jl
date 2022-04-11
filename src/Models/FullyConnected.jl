@@ -50,3 +50,23 @@ end
 function model_input(::Type{FullyConnected}, data::Vector{MLOPF.ProcessedSample})
     return hcat(map(d -> [d.pd..., d.qd...], data)...)
 end
+
+function model_factory(
+    ::Type{FullyConnected},
+    size_out::int,
+    drop_out::Float64,
+    num_layers::int;
+    act::Function = Flux.relu,
+    fact::Function = Flux.sigmoid,
+    kwargs...,
+)
+    return fully_connected_neural_network(
+        size_in,
+        size_out,
+        drop_out,
+        num_layers;
+        act = act,
+        fact = fact,
+        kwargs...,
+    )
+end

@@ -52,3 +52,15 @@ end
 function model_input(::Type{Graph}, data::Vector{MLOPF.ProcessedSample})
     return map(x -> FeaturedGraph(x.adjacency_matrix, nf = hcat([x.pd, x.qd]...)'), data)
 end
+
+function model_factory(
+    la::Type{l},
+    size_in::Int,
+    size_out::int,
+    num_layers::int;
+    act::Function = Flux.relu,
+    fact::Function = Flux.sigmoid,
+    kwargs...,
+) where {l<:GeometricFlux.AbstractGraphLayer}
+    return graph_neural_network(la, size_in, size_out, num_layers; act = act, fact = fact, kwargs...)
+end

@@ -35,10 +35,6 @@ function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vecto
     return congestion_regimes[non_trivial_constraints[:], :]
 end
 
-function build_minibatches(data::Tuple, batch_size::Int, shuffle::Bool)
-    return map(d -> DataLoader(d; batchsize = batch_size, shuffle = shuffle), data)
-end
-
 "Custom bce - weight adjusted binary crossentropy to account for class imbalance."
 function weighted_binary_crossentropy(weight::Float64)
     return (y, ŷ; ϵ = eps(ŷ)) -> -y * log(ŷ + ϵ) * weight - (1 - y) * log(1 - ŷ + ϵ) * (1 - weight)
@@ -59,18 +55,21 @@ function instantiate_device(use_cuda::Bool)
     return cpu
 end
 
+function build_minibatches(data::Tuple, batch_size::Int, shuffle::Bool)
+    return map(d -> DataLoader(d; batchsize = batch_size, shuffle = shuffle), data)
+end
+
 function train!(
-    model::Flux.Chain{},
-    device,
+    model::Flux.Chain,
+    device::Function,
     train_set::DataLoader,
     valid_set::DataLoader,
-    objective,
+    objective::Function,
     num_epochs::Int,
     learning_rate::Float64,
 )
 
     model = model |> device
-    opt, θ = ADAM(learning_rate), Flux.params(model)
     @info "commencing training procedure on $(device)"
 
     losses, eval = [], (X, y) -> objective(Matrix(y), model(X))
@@ -78,6 +77,7 @@ function train!(
 
     prog = Progress(anum_epochs; showspeed = true)
     elapsed_time = @elapsed begin
+        opt, θ = ADAM(learning_rate), Flux.params(model)
         for _ = 1:num_epochs
             for (X, y) in train_set
                 X, y = X |> device, y |> device
@@ -105,8 +105,4 @@ function test(model::Flux.Chain, test_set::DataLoader, objective)
         end
     end
     return elapsed_time, sum(loss) / length(loss)
-end
-
-function model_factory()
-    return "model"
 end

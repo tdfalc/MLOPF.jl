@@ -31,7 +31,7 @@ This function builds a convolutional neural network graph as a Flux.jl chain typ
     - `Flux.Chain`: Convolutional neural network.
 """
 function convolutional_neural_network(
-    drop_out::Float64;
+    drop_out::Float64,
     size_in::Int,
     size_out::int,
     num_layers::int;
@@ -56,4 +56,29 @@ end
 
 function model_input(::Type{Convolutional}, data::Vector{MLOPF.ProcessedSample})
     return cat(map(d -> cat(d.adjacency_matrix, diagm(d.pd), diagm(d.qd), dims = 3), data)..., dims = 4)
+end
+
+function model_factory(
+    ::Type{Convolutional},
+    drop_out::Float64;
+    size_in::Int,
+    size_out::int,
+    num_layers::int;
+    kernel::Tuple{Int} = (3, 3),
+    pool::Tuple{Int} = (2, 2),
+    act::Function = Flux.relu,
+    fact::Function = Flux.sigmoid,
+    kwargs...,
+)
+    return convolutional_neural_network(
+        drop_out,
+        size_in,
+        size_out,
+        num_layers;
+        kernel = kernel,
+        pool = pool,
+        act = act,
+        fact = fact,
+        kwargs...,
+    )
 end
