@@ -1,7 +1,7 @@
 """Run basic pipeline: generate and process samples, then build, fit and evaluate spcecified architectures.
 
 Notes:
-    - Starting with julia -p n provides n worker processes on local machine.
+    * Starting with julia -p n provides n worker processes on local machine.
 """
 
 using Distributed

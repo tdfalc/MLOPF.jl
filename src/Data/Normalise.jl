@@ -14,15 +14,11 @@ This function normalises a vector of samples.
 - `Vector{ProcessedSample}` -- Vector of normalised samples.
 """
 function normalise_samples(data::Vector{MLOPF.ProcessedSample})
-
     @info "normalising $(length(data)) samples using $(nprocs()) process(es)"
-
-    # First we get minimum and maximum values across the dataset for all active and reactive loads.
     pdmin, pdmax = get_min_max(data, :pd)
     qdmin, qdmax = get_min_max(data, :qd)
-
-    # TODO: Move normalisation to after train/test split to avoid data leakage.
     return @showprogress pmap(
+        # TODO: Move normalisation to after train/test split to avoid data leakage.
         d -> normalise_sample(d, Dict(:pdmin => pdmin, :pdmax => pdmax), Dict(:qdmin => qdmin, :qdmax => qdmax)),
         data,
     )
