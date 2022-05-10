@@ -34,6 +34,7 @@ function main()
     settings = MLOPF.get_settings()
     network = PowerModels.parse_file(ENV["HOME"] * settings.PGLIB_OPF.path * "$(case).m")
     MLOPF.truncate!(network)
+
 end
 
 function aggregate_load(network::Dict{String,Any})
@@ -75,15 +76,14 @@ end
 function calculate_diffs(pm::ACPPowerModel, shortest_paths::Matrix{Int64}, solutions::Dict{String,Any}...)
     diff(x::Vector, y::Vector) = 100 * @. abs(x - y) / x
     diff(var::T) where {T<:NetworkParameter} = diff(map(x -> get_parameter(x, var, pm), solutions)...)
-    Δvm, Δpg, Δdu = diff(pg), diff(vm), diff(du)
-    diffs = Dict{String,Dict}()
+    Δvm, Δpg, Δdu = Δ(pg), Δ(vm), Δ(du)
+    diffs_by_order = DefaultDict(Dict)
     for order ∈ 1:maximum(shortest_paths)
-        order_avg(ps) = mean(filter(!isnan, vcat(map(x -> ps[x], eachcol(shortest_paths .== order))...)))
-        add!(key, value) = push!(get!(diffs, key, Dict()), order => value)
-        add!(vm.id, order_avg(Δvm))
-        add!(pg.id, order_avg(Δpg))
-        add!(du.id, order_avg(Δdu))
+        order_avg(ps) = mean(filter(!isnan, [([delta_vm[x] for x in eachcol(sp_mat .== order)]...)...]))
+        diffs_by_order[vm.id] = order_avg(Δvm)
+        diffs_by_order[pg.id] = order_avg(Δpg)
+        diffs_by_order[du.id] = order_avg(Δdu)
     end
-    return deltas
+    return diffs_by_order
 end
 
