@@ -5,7 +5,7 @@ GENERAL:
   regression: false 
 
 PGLIB_OPF:
-  path: "/Personal/pglib-opf/"
+  path: "/Projects/pglib-opf/"
   cases:
     - pglib_opf_case24_ieee_rts
     # - pglib_opf_case30_ieee
@@ -27,12 +27,6 @@ DATA:
     - 0.8
     - 0.1
   normalise: true
-  inequality_constraints:
-    - (JuMP.AffExpr, MathOptInterface.LessThan{Float64})
-    - (JuMP.AffExpr, MathOptInterface.GreaterThan{Float64})
-    - (JuMP.QuadExpr, MathOptInterface.LessThan{Float64})
-    - (JuMP.VariableRef, MathOptInterface.GreaterThan{Float64})
-    - (JuMP.VariableRef, MathOptInterface.LessThan{Float64}) 
 
 PARAMETERS:
   batch_size: 10

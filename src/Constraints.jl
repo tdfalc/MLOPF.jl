@@ -2,15 +2,23 @@ using JuMP
 using PowerModels
 using MathOptInterface
 
+const inequality_constraints =   [
+        "(JuMP.AffExpr, MathOptInterface.LessThan{Float64})",
+        "(JuMP.AffExpr, MathOptInterface.GreaterThan{Float64})",
+        "(JuMP.QuadExpr, MathOptInterface.LessThan{Float64})",
+        "(JuMP.VariableRef, MathOptInterface.GreaterThan{Float64})",
+        "(JuMP.VariableRef, MathOptInterface.LessThan{Float64})",
+    ]
+
 """
     function binding_status(model::Model; threshold::Float64 = 1.0e-5)
 
-This function returns an enumeratiation of constraint activity. Spceifically, a dictionary mapping 
-    between constraint types and a boolean area indicating the binding status of each constraint.
+This function returns an enumeration of constraint activity. Specifically, a dictionary mapping between 
+    constraint types and a boolean array indicating the binding status of each constraint.
 
 # Arguments
 - `model::Model`: JuMP model solved using PowerModels.jl.
-- `threshold::Float64`: Threshold for evaluating binding status of inequality constraint.
+- `threshold::Float64`: Threshold for evaluating binding status of inequality constraints.
 
 # Output
 - `Dict::{String, Vector{Bool}}`: Map between constraint types and binding statuses.
@@ -43,6 +51,6 @@ function binding_status(power_model::ACPPowerModel; threshold::Float64 = 1.0e-5)
     return binding_status(power_model.model, threshold = threshold)
 end
 
-function enumerate_constraints(congestion_regime::Dict{String,Vector{Bool}}, inequality_constraints::Vector{String})
+function enumerate_constraints(congestion_regime::Dict{String,Vector{Bool}})
     return vcat(map(c -> congestion_regime[c], inequality_constraints)...)
 end

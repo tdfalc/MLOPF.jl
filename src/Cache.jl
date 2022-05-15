@@ -8,7 +8,7 @@ cache(f::Function, savedir::String; use_mem_cache::Bool = true) = hash_cache(f, 
 """
     hash_cache(f::function, savedir::String; use_mem_cache::bool=true)
 
-Applies disk (and optional memory) memoization by saving the function output using JLD2 by 
+Applies disk (and optional memory) memoization - the function output is saved using JLD2 by 
     combining the function name with the hash of args and kwargs.
     
 """
@@ -16,9 +16,8 @@ function hash_cache(f::Function, savedir::String; use_mem_cache::Bool = true)
     mem_cache = Dict()
     (args...; kwargs...) -> begin
 
-        func_name = string(f)
         input_hash = bytes2hex(sha256(string(args...; kwargs...)))
-        cache_path = joinpath(savedir, "$(func_name)_$(input_hash).jld2")
+        cache_path = joinpath(savedir, "$(f)_$(input_hash).jld2")
 
         if use_mem_cache & (cache_path in keys(mem_cache))
             return mem_cache[cache_path]
@@ -45,7 +44,7 @@ end
 """
     file_cache(f::function, savedir::String, filename::String)
 
-Applies disk memoization by saving the function output to specified directory and file name.
+Applies disk memoization by saving the function output to a specified path.
     
 """
 function file_cache(f::Function, savedir::String, filename::String)
