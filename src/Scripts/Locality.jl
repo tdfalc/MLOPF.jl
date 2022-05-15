@@ -17,14 +17,8 @@ end
 end
 
 abstract type NetworkParameter end
-
-struct GenParameter <: Parameter
-    id::String
-end
-
-struct BusParameter <: Parameter
-    id::String
-end
+struct GenParameter <: NetworkParameter id::String end
+struct BusParameter <: NetworkParameter id::String end
 
 const vm = BusParameter("vm")
 const du = BusParameter("lam_kcl_r")
@@ -34,7 +28,6 @@ function main()
     settings = MLOPF.get_settings()
     network = PowerModels.parse_file(ENV["HOME"] * settings.PGLIB_OPF.path * "$(case).m")
     MLOPF.truncate!(network)
-
 end
 
 function aggregate_load(network::Dict{String,Any})
@@ -56,23 +49,21 @@ end
 
 "Extract bus variable (for generators) from solution dictionary."
 function get_parameter(solution::Dict{String,Any}, var::T, pm::ACPPowerModel) where {T<:BusParameter}
-    bus_index_map = get_bus_lookup_map(pm)
     return [
         length(bus_gens[bus]) > 0 ? solution["bus"]["$bus"][var.id] : 0 for
-        (bus, _) in sort(bus_index_map; byvalue = true)
+        (bus, _) in sort(get_bus_lookup_map(pm); byvalue = true)
     ]
 end
 
 "Extract generator variable (aggregated by bus) from solution dictionary."
 function get_parameter(solution::Dict{String,Any}, var::T, pm::ACPPowerModel) where {T<:GenParameter}
-    bus_index_map, bus_gen_map = get_bus_lookup_map(pm), MLOPF.get_reference(pm, :bus_gens)
     return [
-        sum(map(gen -> solution["gen"]["$gen"][var.id], bus_gen_map[bus]), init = 0) for
-        (bus, _) in sort(bus_index_map; byvalue = true)
+        sum(map(gen -> solution["gen"]["$gen"][var.id], MLOPF.get_reference(pm, :bus_gens)[bus]), init = 0) for
+        (bus, _) in sort(get_bus_lookup_map(pm); byvalue = true)
     ]
 end
 
-""
+"Returns a dictionary mapping between order and difference (i.e. relative change) in value for each parameter."
 function calculate_diffs(pm::ACPPowerModel, shortest_paths::Matrix{Int64}, solutions::Dict{String,Any}...)
     diff(x::Vector, y::Vector) = 100 * @. abs(x - y) / x
     diff(var::T) where {T<:NetworkParameter} = diff(map(x -> get_parameter(x, var, pm), solutions)...)
