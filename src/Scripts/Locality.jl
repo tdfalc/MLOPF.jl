@@ -32,9 +32,9 @@ function main()
 end
 
 function run_sample()
-    before = solve_opf(network)
     let network = deepcopy(network)
         set_network_loads!(network, sample)
+        before = solve_opf(network)
         for (id, load) ∈ ALL_LOADS
             let network = deepcopy(network)
                 perturb_load!(network, load, parameter_to_perturb, delta)
