@@ -27,7 +27,23 @@ const pg = GenParameter("pg")
 function main()
     settings = MLOPF.get_settings()
     network = PowerModels.parse_file(ENV["HOME"] * settings.PGLIB_OPF.path * "$(case).m")
-    MLOPF.truncate!(network)
+    samples = load_samples()
+    MLOPF.cache(() -> pmap(x -> run_sample(sample), samples[1:num_samples]), "./cache/results/", "$(case).jld2")()
+end
+
+function run_sample()
+    before = solve_opf(network)
+    let network = deepcopy(network)
+        set_network_loads!(network, sample)
+        for (id, load) ∈ ALL_LOADS
+            let network = deepcopy(network)
+                perturb_load!(network, load, parameter_to_perturb, delta)
+                after = solve_opf(network)
+                results[i] = calculate_diffs(pm, shortest_paths, before, after)
+            end
+        end
+    end
+    return results
 end
 
 function aggregate_load(network::Dict{String,Any})
@@ -78,3 +94,6 @@ function calculate_diffs(pm::ACPPowerModel, shortest_paths::Matrix{Int64}, solut
     return diffs_by_order
 end
 
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
