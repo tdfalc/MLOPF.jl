@@ -24,7 +24,7 @@ This function returns an enumeration of constraint activity. Specifically, a dic
 - `Dict::{String, Vector{Bool}}`: Map between constraint types and binding statuses.
 """
 function binding_status(model::JuMP.Model; threshold::Float64 = 1.0e-5)
-    status = Dict()
+    status = Dict{String, Vector{Bool}}()
     for (func, ctype) in list_of_constraint_types(model)
         key = string((func, ctype))
         status[key] = ones(Bool, num_constraints(model, (func, ctype)...))
@@ -54,3 +54,4 @@ end
 function enumerate_constraints(congestion_regime::Dict{String,Vector{Bool}})
     return vcat(map(c -> congestion_regime[c], inequality_constraints)...)
 end
+

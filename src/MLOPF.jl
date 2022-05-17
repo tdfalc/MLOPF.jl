@@ -1,6 +1,6 @@
 module MLOPF
 
-include("./Data/Sample.jl")
+include("./Sample.jl")
 #include("./Models/Generic.jl")
 #include("./Models/FullyConnected.jl")
 #include("./Models/Convolutional.jl")

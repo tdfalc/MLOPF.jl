@@ -12,10 +12,10 @@ This function converts a YAML file into a Dictionary with optional overrides.
 # Outputs
 - `Dict{String,Any}`: Dictionary representation of the pipeline settings.
 """
-function get_settings(; overrides::Dict{String,Any} = Dict{String,Any}(), filename::String = "./settings.yaml")
-    settings = YAML.load_file(filename; dicttype = Dict{String,Any})
+function get_settings(; overrides::Dict{String,Any}=Dict{String,Any}(), filename::String="./settings.yaml")
+    settings = YAML.load_file(filename; dicttype=Dict{String,Any})
     nested_merge!(settings, overrides)
-    return parse(settings)
+    return nested_parse(settings)
 end
 
 function nested_merge!(d::Dict...)
@@ -24,8 +24,8 @@ end
 
 nested_merge!(x::Any...) = x[end]
 
-function parse(d::Dict)
-    return (; Dict(Symbol(k) => parse(v) for (k, v) in d)...)
+function nested_parse(d::Dict)
+    return (; Dict(Symbol(k) => nested_parse(v) for (k, v) in d)...)
 end
 
-parse(x::Any) = x
+nested_parse(x::Any) = x
