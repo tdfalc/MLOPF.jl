@@ -5,7 +5,6 @@ This function prunes disabled branches and generators from the network.
     
 # Arguments:
 - `network::Dict{String,Any}` -- Grid network in PowerModels.jl format.
-
 """
 function truncate!(network::Dict{String,Any})
     remove_disabled_branches!(network)
