@@ -1,22 +1,22 @@
 using PowerModels
 using MLOPF
 
-"Returns the total load, repeated n (= the number of generators) times."
-function augmented_bus_load(pm::ACPPowerModel, bus::String, parameter::MLOPF.BusParameter)
+"Returns the total load (specified component), repeated n (= the number of generators) times."
+function augmented_load_parameter(pm::ACPPowerModel, bus::String, parameter::MLOPF.LoadParameter)
     load = map(id -> pm.data["load"]["$id"][parameter.key], MLOPF.reference(pm, :bus_loads)[parse(Int, bus)])
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus)]
     return fill(sum(load, init=0.0), max(1, length(gens)))
 end
 
-"Returns the normalised voltage magnitude, repeated n (= the number of generators) times."
-function augmented_bus_vm(pm::ACPPowerModel, bus::String)
-    vmin, vmax = getindex.(Ref(pm.data["bus"][bus]), (vm.min, vm.max))
+"Returns the normalised bus parameter, repeated n (= the number of generators) times."
+function augmented_bus_parameter(pm::ACPPowerModel, bus::String, parameter::MLOPF.BusParameter)
+    min, max = getindex.(Ref(pm.data["bus"][bus]), (parameter.min, parameter.max))
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus)]
-    return fill((pm.solution["bus"][bus][vm.key] - vmin) / (vmax - vmin), max(1, length(gens)))
+    return fill((pm.solution["bus"][bus][parameter.key] - min) / (max - min), max(1, length(gens)))
 end
 
-"Returns the normalised injected power (specified component) for each generator on the bus."
-function augmented_bus_gen(pm::ACPPowerModel, bus::String, parameter::MLOPF.GenParameter)
+"Returns the normalised power (specified component) for each generator on the bus."
+function augmented_gen_parameter(pm::ACPPowerModel, bus::String, parameter::MLOPF.GenParameter)
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus)]
     return isempty(gens) ? [NaN] : map(gens) do gen
         (pm.data["gen"]["$gen"][parameter.key] - pm.data["gen"]["$gen"][parameter.min]) /

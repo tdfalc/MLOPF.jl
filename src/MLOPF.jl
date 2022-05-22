@@ -11,25 +11,24 @@ include("./Truncate.jl")
 include("./Cache.jl")
 include("./Settings.jl")
 
-abstract type NetworkParameter end
-
-struct GenParameter <: NetworkParameter
+struct NetworkParameter
     key::String
     min::String
     max::String
 end
 
+struct GenParameter <: NetworkParameter end
+
 const pg = GenParameter("pg", "pmin", "pmax")
 const qg = GenParameter("qg", "qmin", "qmax")
 
-struct BusParameter <: NetworkParameter
-    id::String
-    min::String
-    max::String
-end
+struct LoadParameter <: NetworkParameter end
 
-const pd = BusParameter("pd", "pdmin", "pdmax")
-const qd = BusParameter("qd", "qdmin", "qdmax")
+const pd = LoadParameter("pd", "pdmin", "pdmax")
+const qd = LoadParameter("qd", "qdmin", "qdmax")
+
+struct BusParameter <: NetworkParameter end
+
 const vm = BusParameter("vm", "vmin", "vmax")
 const du = BusParameter("lam_kcl_r", "", "")
 
