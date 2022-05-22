@@ -3,16 +3,15 @@ using JLD2
 using FileIO
 
 cache(f::Function, savedir::String, filename::String) = file_cache(f, savedir, filename)
-cache(f::Function, savedir::String; use_mem_cache::Bool = true) = hash_cache(f, savedir, use_mem_cache = use_mem_cache)
+cache(f::Function, savedir::String; use_mem_cache::Bool=true) = hash_cache(f, savedir, use_mem_cache=use_mem_cache)
 
 """
     hash_cache(f::function, savedir::String; use_mem_cache::bool=true)
 
-Applies disk (and optional memory) memoization - the function output is saved using JLD2 by 
-    combining the function name with the hash of args and kwargs.
-    
+This function applies disk (and optional memory) memoization - the function output is saved 
+    using JLD2 by combining the function name with the hash of args and kwargs. 
 """
-function hash_cache(f::Function, savedir::String; use_mem_cache::Bool = true)
+function hash_cache(f::Function, savedir::String; use_mem_cache::Bool=true)
     mem_cache = Dict()
     (args...; kwargs...) -> begin
 
@@ -44,8 +43,7 @@ end
 """
     file_cache(f::function, savedir::String, filename::String)
 
-Applies disk memoization by saving the function output to a specified path.
-    
+This function applies disk memoization by saving the function output to a specified path.  
 """
 function file_cache(f::Function, savedir::String, filename::String)
     (args...; kwargs...) -> begin

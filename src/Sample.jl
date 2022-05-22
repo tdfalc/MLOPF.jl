@@ -9,8 +9,6 @@ using PowerModels
 
 PowerModels.silence()
 
-# TODO: Add more docstrings for functions here.
-
 """
     generate_samples(network::Dict{String, Any}, num_samples::Int, alpha::Float64; max_iter::Int = 100, nmo::Bool = false)
 
@@ -44,8 +42,7 @@ function generate_samples(
 end
 
 function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int=1, max_iter::Int=100, nmo::Bool=False)
-    pd, qd = get_load(network)
-    let network = deepcopy(network)
+    let network = deepcopy(network), (pd, qd) = get_network_loads(network)
         # Select a random branch to silence (emulating N-1 contingency).
         nmo && silence_random_branch!(network)
 
@@ -55,8 +52,7 @@ function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int=1, m
 
         # Solve the new AC-OPF problem and validate feasibility.
         pm = PowerModels.instantiate_model(network, ACPPowerModel, PowerModels.build_opf)
-        output = solve_acopf(pm, max_iter)
-        if validate_feasibility(output["termination_status"])
+        if solve_acopf!(pm, max_iter)
             return extract_data(pm, MLOPF.binding_status(pm), id)
         end
     end
@@ -70,13 +66,13 @@ function extract_data(pm::ACPPowerModel, congestion_regime::Dict{String,Vector{B
     # construction of input tensors for local graph neural network architectures).
     parameters = DefaultDict(() -> [])
     for (bus, i) in MLOPF.get_bus_index_map(pm)
-        for v in ("vm",)
+        for v in (vm.id,)
             append!(parameters[v], MLOPF.augmented_bus_vm(pm, bus))
         end
-        for g in ("pg", "qg")
+        for g in (pg.id, qg.id)
             append!(parameters[g], MLOPF.augmented_bus_gen(pm, bus, g))
         end
-        for l in ("pd", "qd")
+        for l in (pd.id, qd.id)
             append!(parameters[l], MLOPF.augmented_bus_load(pm, bus, l))
         end
         adj_mat = MLOPF.augment_adjacency_matrix(pm, adj_mat, bus, i)
@@ -93,12 +89,14 @@ function validate_feasibility(status::MOI.TerminationStatusCode)
     return (status == MOI.LOCALLY_SOLVED) || (status == MOI.OPTIMAL)
 end
 
-function solve_acopf(power_model::ACPPowerModel, max_iter::Int)
+"Solve OPF problem for specified power model and return feasibility boolean flag."
+function solve_acopf!(power_model::ACPPowerModel, max_iter::Int)
     optimizer = optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => max_iter, "print_level" => 0)
-    return PowerModels.optimize_model!(power_model, optimizer=optimizer)
+    output = PowerModels.optimize_model!(power_model, optimizer=optimizer)
+    return MLOPF.validate_feasibility(output["termination_status"])
 end
 
-"Proxy for removing random branch from optimization problem whilst preserving topology."
+"Proxy for removing a random branch from optimization problem whilst preserving topology."
 function silence_branch!(network::Dict{String,Any}; br_r::Float64=9e9)
     id = string(rand(1:length(network["branch"])))
     setindex!(network["branch"][id], "b_fr", 0.0)
@@ -113,7 +111,7 @@ end
 
 "Convenience function to get both the active and reactive components of bus loads."
 function get_network_loads(network::Dict{String,Any})
-    return get_network_loads(network, "pd"), get_load(network, "qd")
+    return get_network_loads(network, pd.id), get_network_loads(network, qd.id)
 end
 
 function set_network_loads!(network::Dict{String,Any}, key::String, values::Array{Float64})
@@ -123,24 +121,23 @@ function set_network_loads!(network::Dict{String,Any}, key::String, values::Arra
 end
 
 "Convenience function to set both the active and reactive components of bus loads."
-function set_network_loads!(network::Dict{String,Any}, pd::Array{Float64}, qd::Array{Float64})
-    set_network_loads!(network, "pd", pd)
-    set_network_loads!(network, "qd", qd)
+function set_network_loads!(network::Dict{String,Any}, active::Array{Float64}, reactive::Array{Float64})
+    set_network_loads!(network, pd.id, active)
+    set_network_loads!(network, qd.id, reactive)
 end
 
-"Get (sparse) adjacency matrix using PowerModels API and convert to dense matrix."
+"Get sparse adjacency matrix using PowerModels API and return dense form."
 function get_adjacency_matrix(pm::ACPPowerModel)
     adj_mat, _ = PowerModels._adjacency_matrix(pm)
     return Matrix(adj_mat)
 end
 
-"Build bus index map - required due to inconsitency between name and id of buses."
+"Build bus index map (required due to inconsitency between name and id of buses)."
 function get_bus_index_map(pm::ACPPowerModel)
     return Dict((string(b), i) for (i, b) in enumerate(keys(reference(pm, :bus))))
 end
 
 "Get specific elements from power model reference map."
-function reference(pm::ACPPowerModel, key::Symbol; default=nothing)
-    ref = pm.ref[:it][:pm][:nw][0][key]
-    return ref
+function reference(pm::ACPPowerModel, key::Symbol)
+    return pm.ref[:it][:pm][:nw][0][key]
 end

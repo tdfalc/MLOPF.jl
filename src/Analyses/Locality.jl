@@ -5,7 +5,6 @@ Notes:
 """
 
 using Distributed
-using LightGraphs
 
 @everywhere begin
     using Pkg
@@ -14,32 +13,25 @@ end
 
 @everywhere begin
     using MLOPF
+    using LightGraphs
 end
-
-abstract type NetworkParameter end
-struct GenParameter <: NetworkParameter id::String end
-struct BusParameter <: NetworkParameter id::String end
-
-const vm = BusParameter("vm")
-const du = BusParameter("lam_kcl_r")
-const pg = GenParameter("pg")
 
 function main()
     settings = MLOPF.get_settings()
     network = PowerModels.parse_file(ENV["HOME"] * settings.PGLIB_OPF.path * "$(case).m")
     samples = load_samples()
-    MLOPF.cache(() -> pmap(x -> run_sample(sample), samples[1:num_samples]), "./cache/results/", "$(case).jld2")()
+    MLOPF.cache(() -> pmap(x -> run_sample(sample, network), samples[1:num_samples]), "./cache/results/", "$(case).jld2")()
 end
 
-function run_sample()
+function run_sample(sample::Dict, network)
     let network = deepcopy(network)
         set_network_loads!(network, sample)
         before = solve_opf(network)
         for (id, load) ∈ ALL_LOADS
             let network = deepcopy(network)
-                perturb_load!(network, load, parameter_to_perturb, delta)
+                perturb_load!(network, load, delta)
                 after = solve_opf(network)
-                results[i] = calculate_diffs(pm, shortest_paths, before, after)
+                results[id] = calculate_diffs(pm, shortest_paths, before, after)
             end
         end
     end
@@ -67,31 +59,31 @@ end
 function get_parameter(solution::Dict{String,Any}, var::T, pm::ACPPowerModel) where {T<:BusParameter}
     return [
         length(bus_gens[bus]) > 0 ? solution["bus"]["$bus"][var.id] : 0 for
-        (bus, _) in sort(get_bus_lookup_map(pm); byvalue = true)
+        (bus, _) in sort(get_bus_lookup_map(pm); byvalue=true)
     ]
 end
 
 "Extract generator variable (aggregated by bus) from solution dictionary."
 function get_parameter(solution::Dict{String,Any}, var::T, pm::ACPPowerModel) where {T<:GenParameter}
     return [
-        sum(map(gen -> solution["gen"]["$gen"][var.id], MLOPF.get_reference(pm, :bus_gens)[bus]), init = 0) for
-        (bus, _) in sort(get_bus_lookup_map(pm); byvalue = true)
+        sum(map(gen -> solution["gen"]["$gen"][var.id], MLOPF.get_reference(pm, :bus_gens)[bus]), init=0) for
+        (bus, _) in sort(get_bus_lookup_map(pm); byvalue=true)
     ]
 end
 
-"Returns a dictionary mapping between order and difference (i.e. relative change) in value for each parameter."
-function calculate_diffs(pm::ACPPowerModel, shortest_paths::Matrix{Int64}, solutions::Dict{String,Any}...)
-    diff(x::Vector, y::Vector) = 100 * @. abs(x - y) / x
-    diff(var::T) where {T<:NetworkParameter} = diff(map(x -> get_parameter(x, var, pm), solutions)...)
-    Δvm, Δpg, Δdu = Δ(pg), Δ(vm), Δ(du)
-    diffs_by_order = DefaultDict(Dict)
+"Returns a dictionary mapping between order and relative change in value for each parameter."
+function relative_change(pm::ACPPowerModel, shortest_paths::Matrix{Int64}, solutions::Dict{String,Any}...)
+    delta(x::Vector, y::Vector) = 100 * @. abs(x - y) / x
+    delta(var::T) where {T<:NetworkParameter} = delta(map(x -> get_parameter(x, var, pm), solutions)...)
+    Δvm, Δpg, Δdu = delta(pg), delta(vm), delta(du)
+    deltas_by_order = DefaultDict(() -> Dict)
     for order ∈ 1:maximum(shortest_paths)
         order_avg(ps) = mean(filter(!isnan, [([delta_vm[x] for x in eachcol(sp_mat .== order)]...)...]))
-        diffs_by_order[vm.id] = order_avg(Δvm)
-        diffs_by_order[pg.id] = order_avg(Δpg)
-        diffs_by_order[du.id] = order_avg(Δdu)
+        deltas_by_order[vm.id] = order_avg(Δvm)
+        deltas_by_order[pg.id] = order_avg(Δpg)
+        deltas_by_order[du.id] = order_avg(Δdu)
     end
-    return diffs_by_order
+    return deltas_by_order
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

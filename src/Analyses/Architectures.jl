@@ -5,12 +5,6 @@ Notes:
 """
 
 using Distributed
-using PowerModels
-using MLDataUtils
-using Random
-using Flux
-
-PowerModels.silence()
 
 @everywhere begin
     using Pkg
@@ -19,7 +13,13 @@ end
 
 @everywhere begin
     using MLOPF
+    using PowerModels
+    using MLDataUtils
+    using Random
+    using Flux
 end
+
+PowerModels.silence()
 
 settings = MLOPF.get_settings()
 for case in settings.PGLIB_OPF.cases
@@ -29,71 +29,65 @@ for case in settings.PGLIB_OPF.cases
     MLOPF.truncate!(network)
 
     # Generate samples and process raw data in preparation for modelling.
-    raw_samples = MLOPF.cache(MLOPF.generate_samples, "./cache/samples/", "$(case).jld2")(
+    samples = MLOPF.cache(MLOPF.generate_samples, "./cache/samples/", "$(case).jld2")(
         network,
         settings.DATA.num_samples,
         settings.DATA.alpha,
     )
-    processed_samples = MLOPF.process_raw_samples(
-        raw_samples,
-        network,
-        settings.DATA.inequality_constraints;
-        normalise = settings.DATA.normalise,
-    )
 
-    # # Prepare data for modelling: shuffle training set and create mini-batches.
-    X = MLOPF.model_input(MLOPF.FullyConnected, processed_samples)
-    target = settings.GENERAL.regression ? MLOPF.Primals : MLOPF.NonTrivialConstraints
-    y = MLOPF.model_output(MLOPF.Global, target, processed_samples)
-    train_set, valid_set, test_set = MLDataUtils.splitobs((X, y), at = Tuple(settings.DATA.splits))
-    train_set, valid_set, test_set =
-        MLOPF.build_minibatches((train_set, valid_set, test_set), settings.PARAMETERS.batch_size, settings.DATA.shuffle)
+    # # # Prepare data for modelling: shuffle training set and create mini-batches.
+    # X = MLOPF.model_input(MLOPF.FullyConnected, samples)
+    # target = settings.GENERAL.regression ? MLOPF.Primals : MLOPF.NonTrivialConstraints
+    # y = MLOPF.model_output(MLOPF.Global, target, samples)
+    # train_set, valid_set, test_set = MLDataUtils.splitobs((X, y), at=Tuple(settings.DATA.splits))
+    # train_set, valid_set, test_set =
+    #     MLOPF.build_minibatches((train_set, valid_set, test_set), settings.PARAMETERS.batch_size, settings.DATA.shuffle)
 
-    results = Dict()
-    for seed in settings.GENERAL.seeds
+    # results = Dict()
+    # for seed in settings.GENERAL.seeds
 
-        Random.seed!(seed)
+    #     Random.seed!(seed)
 
-        # Build neural network model for specified architecture.
-        size_in, size_out = size(X, 1), size(y, 1)
-        layers = MLOPF.define_layers(MLOPF.FullyConnected, size_in, size_out, settings.PARAMETERS.num_layers)
-        model = MLOPF.build_model(MLOPF.FullyConnected, layers, settings.PARAMETERS.drop_out)
+    #     # Build neural network model for specified architecture.
+    #     size_in, size_out = size(X, 1), size(y, 1)
+    #     layers = MLOPF.define_layers(MLOPF.FullyConnected, size_in, size_out, settings.PARAMETERS.num_layers)
+    #     model = MLOPF.build_model(MLOPF.FullyConnected, layers, settings.PARAMETERS.drop_out)
 
-        # Fit model using training and validation sets, recording elapsed time and losses.
-        if target == MLOPF.Primals
-            loss_func = MLOPF.mean_squared_error(@. !isnan(y[:, 1]))
-        else
-            # TODO: Use correct positive class weight from training set.
-            loss_func = MLOPF.weighted_binary_crossentropy(sum(y) / length(y))
-        end
-        train_time, (train_loss, valid_loss) = MLOPF.train!(
-            model,
-            train_set,
-            valid_set,
-            loss_func;
-            η = float(settings.PARAMETERS.learning_rate),
-            num_epochs = settings.PARAMETERS.num_epochs,
-            use_cuda = settings.PARAMETERS.use_cuda,
-        )
+    #     # Fit model using training and validation sets, recording elapsed time and losses.
+    #     if target == MLOPF.Primals
+    #         loss_func = MLOPF.mean_squared_error(@. !isnan(y[:, 1]))
+    #     else
+    #         # TODO: Use correct positive class weight from training set.
+    #         loss_func = MLOPF.weighted_binary_crossentropy(sum(y) / length(y))
+    #     end
+    #     train_time, (train_loss, valid_loss) = MLOPF.train!(
+    #         model,
+    #         train_set,
+    #         valid_set,
+    #         loss_func;
+    #         η=float(settings.PARAMETERS.learning_rate),
+    #         num_epochs=settings.PARAMETERS.num_epochs,
+    #         use_cuda=settings.PARAMETERS.use_cuda
+    #     )
 
-        # Test model on specified test set, recording elapsed time and loss.
-        # TODO: We probably want to record the un-normalised test loss as well.
-        test_time, test_loss = MLOPF.test(model, test_set, loss_func)
+    #     # Test model on specified test set, recording elapsed time and loss.
+    #     # TODO: We probably want to record the un-normalised test loss as well.
+    #     test_time, test_loss = MLOPF.test(model, test_set, loss_func)
 
-        # Append results for specified seed.
-        results[seed] = Dict(
-            :target => MLOPF.Primals,
-            :encoding => MLOPF.Global,
-            :architecture => MLOPF.FullyConnected,
-            :train_loss => train_loss,
-            :valid_loss => valid_loss,
-            :test_loss => test_loss,
-            :train_time => train_time,
-            :test_time => test_time,
-            :trainable_parameters => sum(length(p) for p ∈ Flux.params(model)),
-        )
-    end
-    MLOPF.cache(() -> results, "./cache/results/", "$(case).jld2")()
+    #     # Append results for specified seed.
+    #     results[seed] = Dict(
+    #         :target => MLOPF.Primals,
+    #         :encoding => MLOPF.Global,
+    #         :architecture => MLOPF.FullyConnected,
+    #         :train_loss => train_loss,
+    #         :valid_loss => valid_loss,
+    #         :test_loss => test_loss,
+    #         :train_time => train_time,
+    #         :test_time => test_time,
+    #         :trainable_parameters => sum(length(p) for p ∈ Flux.params(model)),
+    #     )
+    # end
+    # MLOPF.cache(() -> results, "./cache/results/", "$(case).jld2")()
 
 end
 
