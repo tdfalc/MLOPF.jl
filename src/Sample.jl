@@ -66,14 +66,14 @@ function extract_data(pm::ACPPowerModel, congestion_regime::Dict{String,Vector{B
     # construction of input tensors for local graph neural network architectures).
     parameters = DefaultDict(() -> [])
     for (bus, i) in MLOPF.get_bus_index_map(pm)
-        for v in (vm.key,)
-            append!(parameters[v], MLOPF.augmented_bus_vm(pm, bus))
+        for v in (vm,)
+            append!(parameters[v.key], MLOPF.augmented_bus_parameter(pm, bus, v))
         end
-        for g in (pg.key, qg.key)
-            append!(parameters[g], MLOPF.augmented_bus_gen(pm, bus, g))
+        for g in (pg, qg)
+            append!(parameters[g.key], MLOPF.augmented_gen_parameter(pm, bus, g))
         end
-        for l in (pd.key, qd.key)
-            append!(parameters[l], MLOPF.augmented_bus_load(pm, bus, l))
+        for l in (pd, qd)
+            append!(parameters[l.key], MLOPF.augmented_load_parameter(pm, bus, l))
         end
         adj_mat = MLOPF.augment_adjacency_matrix(pm, adj_mat, bus, i)
     end

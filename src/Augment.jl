@@ -10,9 +10,9 @@ end
 
 "Returns the normalised bus parameter, repeated n (= the number of generators) times."
 function augmented_bus_parameter(pm::ACPPowerModel, bus::String, parameter::MLOPF.BusParameter)
-    min, max = getindex.(Ref(pm.data["bus"][bus]), (parameter.min, parameter.max))
+    minimum, maximum = getindex.(Ref(pm.data["bus"][bus]), (parameter.min, parameter.max))
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus)]
-    return fill((pm.solution["bus"][bus][parameter.key] - min) / (max - min), max(1, length(gens)))
+    return fill((pm.solution["bus"][bus][parameter.key] - minimum) / (maximum - minimum), max(1, length(gens)))
 end
 
 "Returns the normalised power (specified component) for each generator on the bus."
