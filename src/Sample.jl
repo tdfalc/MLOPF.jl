@@ -48,7 +48,7 @@ function generate_sample(network::Dict{String,Any}, alpha::Float64; id::Int=1, m
 
         # Sample re-scaling factors from a Uniform distribution (parameterised by alpha).
         distribution = Uniform(1.0 - alpha, 1.0 + alpha)
-        set_load!(network, pd .* rand(distribution, length(pd)), qd .* rand(distribution, length(qd)))
+        set_network_loads!(network, pd .* rand(distribution, length(pd)), qd .* rand(distribution, length(qd)))
 
         # Solve the new AC-OPF problem and validate feasibility.
         pm = PowerModels.instantiate_model(network, ACPPowerModel, PowerModels.build_opf)
@@ -66,13 +66,13 @@ function extract_data(pm::ACPPowerModel, congestion_regime::Dict{String,Vector{B
     # construction of input tensors for local graph neural network architectures).
     parameters = DefaultDict(() -> [])
     for (bus, i) in MLOPF.get_bus_index_map(pm)
-        for v in (vm.id,)
+        for v in (vm.key,)
             append!(parameters[v], MLOPF.augmented_bus_vm(pm, bus))
         end
-        for g in (pg.id, qg.id)
+        for g in (pg.key, qg.key)
             append!(parameters[g], MLOPF.augmented_bus_gen(pm, bus, g))
         end
-        for l in (pd.id, qd.id)
+        for l in (pd.key, qd.key)
             append!(parameters[l], MLOPF.augmented_bus_load(pm, bus, l))
         end
         adj_mat = MLOPF.augment_adjacency_matrix(pm, adj_mat, bus, i)
@@ -99,10 +99,9 @@ end
 "Proxy for removing a random branch from optimization problem whilst preserving topology."
 function silence_branch!(network::Dict{String,Any}; br_r::Float64=9e9)
     id = string(rand(1:length(network["branch"])))
-    setindex!(network["branch"][id], "b_fr", 0.0)
-    setindex!(network["branch"][id], "b_to", 0.0)
-    setindex!(network["branch"][id], "br_x", 0.0)
-    setindex!(network["branch"][id], "br_r", br_r)
+    for parameter ∈ ("b_fr", "b_to", "br_x", "br_r")
+        setindex!(network["branch"][id], parameter == "br_r" ? br_r : 0.0, parameter)
+    end
 end
 
 function get_network_loads(network::Dict{String,Any}, key::String)
@@ -111,19 +110,19 @@ end
 
 "Convenience function to get both the active and reactive components of bus loads."
 function get_network_loads(network::Dict{String,Any})
-    return get_network_loads(network, pd.id), get_network_loads(network, qd.id)
+    return get_network_loads(network, pd.key), get_network_loads(network, qd.key)
 end
 
 function set_network_loads!(network::Dict{String,Any}, key::String, values::Array{Float64})
     for (i, (_, load)) in enumerate(sort(network["load"]))
-        setindex!(load, key, values[i])
+        setindex!(load, values[i], key)
     end
 end
 
 "Convenience function to set both the active and reactive components of bus loads."
 function set_network_loads!(network::Dict{String,Any}, active::Array{Float64}, reactive::Array{Float64})
-    set_network_loads!(network, pd.id, active)
-    set_network_loads!(network, qd.id, reactive)
+    set_network_loads!(network, pd.key, active)
+    set_network_loads!(network, qd.key, reactive)
 end
 
 "Get sparse adjacency matrix using PowerModels API and return dense form."
