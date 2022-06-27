@@ -1,20 +1,10 @@
 # Machine Learning Assisted OPF
 MLOPF.jl is a Julia package used as a basis for research concerning machine learning assisted optimal power flow. 
 ## Outstanding Tasks
-- [x] Implement concurrent sampler
-- [x] Implement regression setting
-- [x] Implement classification setting
-- [x] Implement fully-connected neural network
-- [x] Implement convolutional neural network
-- [x] Implement graph neural networks
-- [x] Add weighted binary cross entropy objective
-- [ ] Add weighted adjacency matrix (nodal admittance matrix)
-- [x] Add N-1 contingency
 - [ ] Add locality analysis
 - [ ] Add prediction time analysis
 - [ ] Add convergence plots
 - [ ] Add dataframe -> latex tables script
-- [x] Add .gitignore to bypass cache files
 
 ## Citation
 If you find MLOPF.jl useful in your work, we kindly request that you cite the following [publication](https://arxiv.org/abs/2110.00306):
