@@ -11,7 +11,7 @@ const inequality_constraints = [
 ]
 
 """
-    function binding_status(model::Model; threshold::Float64 = 1.0e-5)
+    The function binding_status(model::Model; threshold::Float64 = 1.0e-5)
 
 This function returns an enumeration of constraint activity. Specifically, a dictionary mapping between 
     constraint types and a boolean array indicating the binding status of each constraint.

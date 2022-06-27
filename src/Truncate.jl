@@ -1,7 +1,7 @@
 """
     truncate!(network::Dict{String,Any})
 
-This function prunes disabled branches and generators from the network.
+This function prunes disabled branches and generators from a network.
     
 # Arguments:
 - `network::Dict{String,Any}` -- Grid network in PowerModels.jl format.

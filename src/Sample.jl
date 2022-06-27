@@ -21,7 +21,7 @@ This function generates a set of feasible samples by re-scaling each active and 
 - `alpha::Float64` -- Uniform distrubtion parameter used to re-scale inputs.
 
 # Keywords:
-- `max_iter::Int` -- Maximum number of iterations the IPOPT algorithm should run before declaring infeasiblity. Defaults to 100.
+- `max_iter::Int` -- Maximum number of iterations IPOPT should run before declaring infeasiblity. Defaults to 100.
 - `nmo::Bool` -- Flag to randomly silence a branch in each sample to emulate N-1 contingency. Defaults to false.
 
 # Outputs
@@ -61,19 +61,13 @@ end
 
 function extract_data(pm::ACPPowerModel, congestion_regime::Dict{String,Vector{Bool}}, id::Int64)
     adj_mat = MLOPF.get_adjacency_matrix(pm)
-    # Extract parameters to a dictionary that maps each parameter name to a vector of floats
+    # Extract parameters to a map of each parameter name to a vector of floats
     # with length equal to the number of generators in the network (this simplifies the
     # construction of input tensors for local graph neural network architectures).
     parameters = DefaultDict(() -> [])
     for (bus, i) in MLOPF.get_bus_index_map(pm)
-        for v in (vm,)
-            append!(parameters[v.key], MLOPF.augmented_bus_parameter(pm, bus, v))
-        end
-        for g in (pg, qg)
-            append!(parameters[g.key], MLOPF.augmented_gen_parameter(pm, bus, g))
-        end
-        for l in (pd, qd)
-            append!(parameters[l.key], MLOPF.augmented_load_parameter(pm, bus, l))
+        for parameter in (vm, pg, qg, pd, qd)
+            append!(parameters[parameter.key], MLOPF.augmented_parameter(pm, bus, parameter))
         end
         adj_mat = MLOPF.augment_adjacency_matrix(pm, adj_mat, bus, i)
     end
@@ -89,7 +83,7 @@ function validate_feasibility(status::MOI.TerminationStatusCode)
     return (status == MOI.LOCALLY_SOLVED) || (status == MOI.OPTIMAL)
 end
 
-"Solve OPF problem for specified power model and return feasibility boolean flag."
+"Solve OPF problem for specified power model and return feasibility flag."
 function solve_acopf!(power_model::ACPPowerModel, max_iter::Int)
     optimizer = optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => max_iter, "print_level" => 0)
     output = PowerModels.optimize_model!(power_model, optimizer=optimizer)
@@ -99,28 +93,26 @@ end
 "Proxy for removing a random branch from optimization problem whilst preserving topology."
 function silence_branch!(network::Dict{String,Any}; br_r::Float64=9e9)
     id = string(rand(1:length(network["branch"])))
-    for parameter ∈ ("b_fr", "b_to", "br_x", "br_r")
+    for parameter in ("b_fr", "b_to", "br_x", "br_r")
         setindex!(network["branch"][id], parameter == "br_r" ? br_r : 0.0, parameter)
     end
 end
 
-function get_network_loads(network::Dict{String,Any}, key::String)
-    return [load[key] for (_, load) in sort(network["load"])]
-end
-
 "Convenience function to get both the active and reactive components of bus loads."
 function get_network_loads(network::Dict{String,Any})
-    return get_network_loads(network, pd.key), get_network_loads(network, qd.key)
-end
-
-function set_network_loads!(network::Dict{String,Any}, key::String, values::Array{Float64})
-    for (i, (_, load)) in enumerate(sort(network["load"]))
-        setindex!(load, values[i], key)
+    function get_network_loads(network::Dict{String,Any}, key::String)
+        return [load[key] for (_, load) in sort(network["load"])]
     end
+    return get_network_loads(network, pd.key), get_network_loads(network, qd.key)
 end
 
 "Convenience function to set both the active and reactive components of bus loads."
 function set_network_loads!(network::Dict{String,Any}, active::Array{Float64}, reactive::Array{Float64})
+    function set_network_loads!(network::Dict{String,Any}, key::String, values::Array{Float64})
+        for (i, (_, load)) in enumerate(sort(network["load"]))
+            setindex!(load, values[i], key)
+        end
+    end
     set_network_loads!(network, pd.key, active)
     set_network_loads!(network, qd.key, reactive)
 end
