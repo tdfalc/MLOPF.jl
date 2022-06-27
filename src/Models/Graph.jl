@@ -37,19 +37,19 @@ function graph_neural_network(
     size_in::Tuple{Int},
     size_out::Int,
     num_layers::Int;
-    drop_out::Float64 = 0.0,
-    act::Function = Flux.relu,
-    fact::Function = Flux.sigmoid,
-    conv::Type{C} = GeometricFlux.GCNConv,
-    encoding::Type{E} = MLOPF.Global,
-    kwargs...,
+    drop_out::Float64=0.0,
+    act::Function=Flux.relu,
+    fact::Function=Flux.sigmoid,
+    conv::Type{C}=GeometricFlux.GCNConv,
+    encoding::Type{E}=MLOPF.Global,
+    kwargs...
 ) where {C<:GeometricFlux.AbstractGraphLayer,E<:MLOPF.Encoding}
     size(i::Int) = i == 0 ? size_in : ceil(Int, size_in / 4) * 4 * 2^(i - 1)
     chain = []
     for i ∈ 1:(num_layers)
         push!(chain, conv(size(i - 1) => size(i), act; kwargs...))
-        push!(chain, x -> FeaturedGraph(x.graph.S, nf = Flux.BatchNorm(layer.out)(x.nf))) # Check this
-        push!(chain, x -> FeaturedGraph(x.graph.S, nf = Flux.dropout(x.nf, drop_out)))
+        push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.BatchNorm(layer.out)(x.nf))) # Check this
+        push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.dropout(x.nf, drop_out)))
     end
     if isa(encoding, MLOPF.Global)
         push!(chain, x -> vec(x.nf'))
@@ -63,7 +63,7 @@ function graph_neural_network(
 end
 
 function model_input(::Type{Graph}, data::Vector{MLOPF.ProcessedSample})
-    return map(x -> FeaturedGraph(x.adjacency_matrix, nf = hcat([x.pd, x.qd]...)'), data)
+    return map(x -> FeaturedGraph(x["adjacency_matrix"], nf=hcat([x["parameters"][pd.key], x["parameters"][qd.key]]...)'), data)
 end
 
 function model_factory(::Type{Graph}, size_in::Int, size_out::Int, num_layers::Int; kwargs...)
