@@ -1,0 +1,38 @@
+
+GENERAL:
+  seeds: 
+    - 1
+  regression: false 
+
+PGLIB_OPF:
+  path: "/Projects/pglib-opf/"
+  cases:
+    - pglib_opf_case24_ieee_rts
+    # - pglib_opf_case30_ieee
+    # - pglib_opf_case39_epri
+    # - pglib_opf_case57_ieee
+    # - pglib_opf_case73_ieee_rts
+    # - pglib_opf_case118_ieee
+    # - pglib_opf_case162_ieee_dtc
+    # - pglib_opf_case300_ieee
+    # - pglib_opf_case588_sdet
+    # - pglib_opf_case1354_pegase
+    # - pglib_opf_case2853_sdet
+
+DATA:
+  num_samples: 1000
+  alpha: 0.2
+  splits: 
+    - 0.8
+    - 0.1
+
+PARAMETERS:
+  batch_size: 10
+  learning_rate: 0.001
+  use_cuda: false
+  num_layers: 3
+  drop_out: 0.1
+  num_epochs: 200
+
+
+
