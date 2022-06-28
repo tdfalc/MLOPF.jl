@@ -2,7 +2,14 @@
 GENERAL:
   seeds: 
     - 1
+
+MODEL:
   regression: false 
+  local: false
+  ARCHITECTURE:
+    fully_connected: false
+    convolutional: false
+    graph: false
 
 PGLIB_OPF:
   path: "/Projects/pglib-opf/"

@@ -33,7 +33,7 @@ end
 "Repeat specified rows and columns num generator times."
 function augment_adjacency_matrix(pm::ACPPowerModel, adj_mat::Matrix, bus_name::String, bus_id::Int64)
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus_name)]
-    adj_mat = vcat(adj_mat[1:(bus_id-1), :], repeat(adj_mat[bus_id, :]', length(gens)), adj_mat[(bus_id+1):end, :])
-    adj_mat = hcat(adj_mat[:, 1:(bus_id-1)], repeat(adj_mat[:, bus_id]', length(gens))', adj_mat[:, (bus_id+1):end])
+    adj_mat = vcat(adj_mat[1:(bus_id-1), :], repeat(adj_mat[bus_id, :]', max(1, length(gens))), adj_mat[(bus_id+1):end, :])
+    adj_mat = hcat(adj_mat[:, 1:(bus_id-1)], repeat(adj_mat[:, bus_id]', max(1, length(gens)))', adj_mat[:, (bus_id+1):end])
     return adj_mat
 end

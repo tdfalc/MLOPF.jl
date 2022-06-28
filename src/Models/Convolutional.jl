@@ -6,7 +6,7 @@ struct Convolutional <: NeuralNetwork end
 
 """
     convolutional_neural_network(
-        size_in::Int64,
+        size_in::Tuple,
         size_out::Int64,
         num_layers::Int;
         drop_out::Float64 = 0.0,
@@ -21,7 +21,7 @@ struct Convolutional <: NeuralNetwork end
 This function builds a convolutional graph as a Flux.jl chain type.
     
 # Arguments:
-    - `size_in::Int` -- Network input size (number of channels).
+    - `size_in::Tuple` -- Network input size (width, height, channels).
     - `size_out::Int` -- Network output size.
     - `num_layers::Int` -- Number of hidden layers.
 
@@ -37,7 +37,7 @@ This function builds a convolutional graph as a Flux.jl chain type.
     - `Flux.Chain`: Convolutional neural network.
 """
 function convolutional_neural_network(
-    size_in::Int64,
+    size_in::Tuple,
     size_out::Int64,
     num_layers::Int;
     drop_out::Float64=0.0,
@@ -48,16 +48,18 @@ function convolutional_neural_network(
     pool::Tuple{Int64,Int64}=(2, 2),
     kwargs...
 )
-    size(i::Int) = i == 0 ? size_in : Int(ceil(Int64, size_in / 4) * 4 * 2^(i - 1))
+    width, _, channels = size_in
+    size(i::Int) = i == 0 ? channels : Int(ceil(Int64, channels / 4) * 4 * 2^(i - 1))
     chain = []
     for i in 1:(num_layers)
         push!(chain, Flux.Conv(kernel, size(i - 1) => size(i), act; pad=pad, kwargs...))
         push!(chain, x -> Flux.maxpool(x, pool))
-        push!(chain, x -> Flux.BatchNorm(size(x))(x))
+        push!(chain, x -> Flux.BatchNorm(size(i))(x))
         push!(chain, Flux.Dropout(drop_out))
+        width = (1 + (width - kernel[1] + 2pad[1])) / pool[1]
     end
     push!(chain, x -> reshape(x, :, Base.size(x, 4)))
-    push!(chain, x -> Flux.Dense(size(x), size_out, fact))
+    push!(chain, Flux.Dense(Int(floor(width)^2) * size(num_layers), size_out, fact))
     return Flux.Chain(chain...)
 end
 
@@ -65,6 +67,6 @@ function model_input(::Type{Convolutional}, data::Vector{Dict{String,Any}})
     return cat(map(d -> cat(d["adjacency_matrix"], diagm(d["parameters"][pd.key]), diagm(d["parameters"][qd.key]), dims=3), data)..., dims=4)
 end
 
-function model_factory(::Type{Convolutional}, size_in::Int64, size_out::Int64, num_layers::Int64; kwargs...)
+function model_factory(::Type{Convolutional}, size_in::Union{Int64,Tuple}, size_out::Int64, num_layers::Int64; kwargs...)
     return convolutional_neural_network(size_in, size_out, num_layers; kwargs...)
 end

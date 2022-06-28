@@ -68,6 +68,6 @@ function model_input(::Type{Graph}, data::Vector{Dict{String,Any}})
     return map(x -> FeaturedGraph(x["adjacency_matrix"], nf=hcat([x["parameters"][pd.key], x["parameters"][qd.key]]...)'), data)
 end
 
-function model_factory(::Type{Graph}, size_in::Int64, size_out::Int64, num_layers::Int64; kwargs...)
+function model_factory(::Type{Graph}, size_in::Union{Int64,Tuple}, size_out::Int64, num_layers::Int64; kwargs...)
     return graph_neural_network(size_in, size_out, num_layers; kwargs...)
 end

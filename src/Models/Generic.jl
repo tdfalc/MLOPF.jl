@@ -103,7 +103,7 @@ function train!(
         opt, θ = ADAM(learning_rate), Flux.params(model)
         for _ = 1:num_epochs
             for (X, y) in train_set
-                X, y = X |> device, y |> device
+                X, y = Float32.(X |> device), Float32.(y |> device)
                 gradients = Flux.gradient(θ) do
                     eval(X, y)
                 end

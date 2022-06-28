@@ -10,7 +10,7 @@ using PowerModels
 PowerModels.silence()
 
 """
-    generate_samples(network::Dict{String, Any}, num_samples::Int, alpha::Float64; max_iter::Int = 100, nmo::Bool = false)
+    generate_data(network::Dict{String, Any}, num_samples::Int, alpha::Float64; max_iter::Int = 100, nmo::Bool = false)
 
 This function generates a set of feasible samples by re-scaling each active and reactive load component 
     (relative to nominal values) by factors independently drawn from a Uniform distribution.
@@ -27,7 +27,7 @@ This function generates a set of feasible samples by re-scaling each active and 
 # Outputs
     - `Vector{Dict{String,Any}}`: Vector of feasible samples.
 """
-function generate_samples(
+function generate_data(
     network::Dict{String,Any},
     num_samples::Int,
     alpha::Float64;
