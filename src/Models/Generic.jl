@@ -64,7 +64,7 @@ end
 
 "Custom bce - weight adjusted binary crossentropy to account for class imbalance."
 function bce(; weight::Float64=0.5)
-    return (y, ŷ; ϵ=eps(yFloat64)) -> mean(@. -y * log(ŷ + ϵ) * weight - (1 - y) * log(1 - ŷ + ϵ) * (1 - weight))
+    return (y, ŷ; ϵ=eps(Float64)) -> mean(@. -y * log(ŷ + ϵ) * weight - (1 - y) * log(1 - ŷ + ϵ) * (1 - weight))
 end
 
 "Custom mse - initalised with bit vector mask to remove redunant rows when evaluating loss."

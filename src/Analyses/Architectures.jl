@@ -16,6 +16,7 @@ end
     using PowerModels
     using MLDataUtils
     using Random
+    using Pipe
     using Flux
 end
 
@@ -34,8 +35,8 @@ for case in settings.PGLIB_OPF.cases
 
     target = settings.GENERAL.regression ? MLOPF.Primals : MLOPF.NonTrivialConstraints
     scaler = MLOPF.MinMaxScaler(data)
-    data = @pipe data |> MLDataUtils.splitobs(_, at=Tuple(settings.DATA.splits)) |>
-                 MLOPF.prepare_input_and_output(_, target, MLOPF.FullyConnected, MLOPF.Global, scaler) |>
+    data = @pipe MLDataUtils.splitobs(data, at=Tuple(settings.DATA.splits)) |>
+                 MLOPF.prepare_input_and_output(_..., target, MLOPF.FullyConnected, MLOPF.Global, scaler) |>
                  MLOPF.prepare_minibatches(_, settings.PARAMETERS.batch_size)
 
     results = Dict()
