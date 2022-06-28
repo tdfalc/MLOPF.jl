@@ -1,3 +1,9 @@
+"""Augment network parameters.
+
+    Note: voltage magnitude and active and reactive generator outputs are normalised using physical limits to 
+    ensure implicit satisfaction of lower/upper bound inequality constraints.
+"""
+
 using PowerModels
 using MLOPF
 

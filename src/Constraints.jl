@@ -11,17 +11,17 @@ const inequality_constraints = [
 ]
 
 """
-    The function binding_status(model::Model; threshold::Float64 = 1.0e-5)
+    binding_status(model::Model; threshold::Float64 = 1.0e-5)
 
 This function returns an enumeration of constraint activity. Specifically, a dictionary mapping between 
     constraint types and a boolean array indicating the binding status of each constraint.
 
 # Arguments
-- `model::Model`: JuMP model solved using PowerModels.jl.
-- `threshold::Float64`: Threshold for evaluating the binding status of inequality constraints.
+    - `model::Model`: JuMP model solved using PowerModels.jl.
+    - `threshold::Float64`: Threshold for evaluating the binding status of inequality constraints.
 
 # Output
-- `Dict::{String, Vector{Bool}}`: Map between constraint types and binding statuses.
+    - `Dict::{String, Vector{Bool}}`: Map between constraint types and binding statuses.
 """
 function binding_status(model::JuMP.Model; threshold::Float64=1.0e-5)
     status = Dict{String,Vector{Bool}}()

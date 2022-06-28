@@ -22,11 +22,9 @@ PGLIB_OPF:
 DATA:
   num_samples: 1000
   alpha: 0.2
-  shuffle: true
   splits: 
     - 0.8
     - 0.1
-  normalise: true
 
 PARAMETERS:
   batch_size: 10

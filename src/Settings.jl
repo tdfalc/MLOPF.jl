@@ -6,11 +6,11 @@ using YAML
 This function converts a YAML file into a Dictionary with optional overrides.
 
 # Keywords
-- `overrides::Dict{String,Any}`: Dictionary of overrides used to update the settings.
-- `filename::String`: Path to location of the settings YAML file.
+    - `overrides::Dict{String,Any}`: Dictionary of overrides used to update the settings.
+    - `filename::String`: Path to location of the settings YAML file.
 
 # Outputs
-- `Dict{String,Any}`: Dictionary representation of the pipeline settings.
+    - `Dict{String,Any}`: Dictionary representation of the pipeline settings.
 """
 function get_settings(; overrides::Dict{String,Any}=Dict{String,Any}(), filename::String="./settings.yaml")
     settings = YAML.load_file(filename; dicttype=Dict{String,Any})

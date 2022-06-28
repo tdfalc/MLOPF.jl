@@ -16,32 +16,59 @@ struct Local <: Encoding end
 
 abstract type NeuralNetwork end
 
-function model_output(::Type{Local}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
+function prepare_minibatches(data::Vector, batch_size::Int=10, shuffle::Bool=true)
+    return map(d -> DataLoader(d; batchsize=batch_size, shuffle=shuffle), data)
+end
+
+function prepare_input_and_output(
+    train_set,
+    valid_set,
+    test_set,
+    target::Type{T},
+    arch::Type{A},
+    encoding::Type{E},
+    scaler::MLOPF.MinMaxScaler
+) where {T<:Target,A<:NeuralNetwork,E<:Encoding}
+    return [
+        (
+            MLOPF.model_input(arch, MLOPF.normalise_load(Vector(set), scaler)),
+            try
+                MLOPF.model_output(encoding, target, Vector(set))
+            catch
+                nt_constraints = non_trivial_constraints(Vector(train_set))
+                MLOPF.model_output(encoding, target, Vector(set), nt_constraints)
+            end
+        ) for set in (train_set, valid_set, test_set)
+    ]
+end
+
+function model_output(::Type{Local}, ::Type{Primals}, data::Vector{Dict{String,Any}})
     return hcat(map(d -> hcat(d["parameters"][pg.key], d["parameters"][vm.key])', data))
 end
 
-function model_output(::Type{Global}, ::Type{Primals}, data::Vector{MLOPF.ProcessedSample})
+function model_output(::Type{Global}, ::Type{Primals}, data::Vector{Dict{String,Any}})
     return hcat(map(d -> [d["parameters"][pg.key]..., d["parameters"][vm.key]...], data)...)
 end
 
-function model_output(::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{MLOPF.ProcessedSample})
-    # TODO: Move the determination of non-trivial constraints back to the training set to avoid 
-    # TODO: this data leakage.
-    congestion_regimes = hcat([sample.regime for sample in data]...)
-    # First we count the number of times each constraint is binding.
+function non_trivial_constraints(data::Vector{Dict{String,Any}})
+    congestion_regimes = hcat([d["congestion_regime"] for d in data]...)
     activation_count = sum(congestion_regimes, dims=2)
-    # Then we flag constraints that change binding status atleast once.
-    non_trivial_constraints = (activation_count .> 0) .& (activation_count .< length(data))
+    return (activation_count .> 0) .& (activation_count .< length(data))
+end
+
+function model_output(
+    ::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{Dict{String,Any}}, non_trivial_constraints::BitMatrix)
+    congestion_regimes = hcat([d["congestion_regime"] for d in data]...)
     return congestion_regimes[non_trivial_constraints[:], :]
 end
 
 "Custom bce - weight adjusted binary crossentropy to account for class imbalance."
-function weighted_binary_crossentropy(weight::Float64)
-    return (y, ŷ; ϵ=eps(ŷ)) -> -y * log(ŷ + ϵ) * weight - (1 - y) * log(1 - ŷ + ϵ) * (1 - weight)
+function bce(; weight::Float64=0.5)
+    return (y, ŷ; ϵ=eps(yFloat64)) -> mean(@. -y * log(ŷ + ϵ) * weight - (1 - y) * log(1 - ŷ + ϵ) * (1 - weight))
 end
 
 "Custom mse - initalised with bit vector mask to remove redunant rows when evaluating loss."
-function mean_squared_error(mask::BitVector)
+function mse(mask::BitVector)
     return (y, ŷ) -> Statistics.mean(
         ((y, ŷ) -> sum((y[mask] - ŷ[mask]) .^ 2) / size(y[mask], 2)).((eachcol.((y, ŷ)))...),
     )
@@ -55,18 +82,14 @@ function instantiate_device(use_cuda::Bool)
     return cpu
 end
 
-function build_minibatches(data::Tuple, batch_size::Int, shuffle::Bool)
-    return map(d -> DataLoader(d; batchsize=batch_size, shuffle=shuffle), data)
-end
-
 function train!(
     model::Flux.Chain,
     device::Function,
     train_set::DataLoader,
     valid_set::DataLoader,
-    objective::Function,
-    num_epochs::Int,
-    learning_rate::Float64,
+    objective::Function;
+    num_epochs::Int=1,
+    learning_rate::Float64=1e-3
 )
 
     model = model |> device
@@ -75,14 +98,14 @@ function train!(
     losses, eval = [], (X, y) -> objective(Matrix(y), model(X))
     callback = () -> push!(losses, [eval(train_set.data...); eval(valid_set.data...)])
 
-    prog = Progress(anum_epochs; showspeed=true)
+    prog = Progress(num_epochs; showspeed=true)
     elapsed_time = @elapsed begin
         opt, θ = ADAM(learning_rate), Flux.params(model)
         for _ = 1:num_epochs
             for (X, y) in train_set
                 X, y = X |> device, y |> device
                 gradients = Flux.gradient(θ) do
-                    eval(model(X), y)
+                    eval(X, y)
                 end
                 Flux.update!(opt, θ, gradients)
             end

@@ -16,16 +16,16 @@ This function generates a set of feasible samples by re-scaling each active and 
     (relative to nominal values) by factors independently drawn from a Uniform distribution.
 
 # Arguments:
-- `network::Dict{String, Any}` -- Grid network in PowerModels.jl format.
-- `num_samples::Int` -- Number of (feasible) samples to generate.
-- `alpha::Float64` -- Uniform distrubtion parameter used to re-scale inputs.
+    - `network::Dict{String, Any}` -- Grid network in PowerModels.jl format.
+    - `num_samples::Int` -- Number of (feasible) samples to generate.
+    - `alpha::Float64` -- Uniform distrubtion parameter used to re-scale inputs.
 
 # Keywords:
-- `max_iter::Int` -- Maximum number of iterations IPOPT should run before declaring infeasiblity. Defaults to 100.
-- `nmo::Bool` -- Flag to randomly silence a branch in each sample to emulate N-1 contingency. Defaults to false.
+    - `max_iter::Int` -- Maximum number of iterations IPOPT should run before declaring infeasiblity. Defaults to 100.
+    - `nmo::Bool` -- Flag to randomly silence a branch in each sample to emulate N-1 contingency. Defaults to false.
 
 # Outputs
-- `Vector{Dict{String,Any}}`: Vector of feasible samples.
+    - `Vector{Dict{String,Any}}`: Vector of feasible samples.
 """
 function generate_samples(
     network::Dict{String,Any},
@@ -74,7 +74,7 @@ function extract_data(pm::ACPPowerModel, congestion_regime::Dict{String,Vector{B
     return Dict(
         "id" => id,
         "adjacency_matrix" => adj_mat,
-        "parameters" => parameters,
+        "parameters" => Dict(parameters),
         "congestion_regime" => MLOPF.enumerate_constraints(congestion_regime),
     )
 end
