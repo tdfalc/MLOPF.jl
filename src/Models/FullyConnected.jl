@@ -40,7 +40,7 @@ function fully_connected_neural_network(
 )
     size(i::Int) = floor(size_in + (i / num_layers) * (size_out - size_in))
     chain = []
-    for i ∈ 1:(num_layers)
+    for i in 1:(num_layers)
         push!(chain, Flux.Dense(size(i - 1), size(i), act))
         push!(chain, x -> Flux.BatchNorm(size(x))(x))
         push!(chain, Flux.Dropout(drop_out))
@@ -49,7 +49,7 @@ function fully_connected_neural_network(
     return Flux.Chain(chain...)
 end
 
-function model_input(::Type{FullyConnected}, data::Vector{MLOPF.ProcessedSample})
+function model_input(::Type{FullyConnected}, data::Vector{Dict{String,Any}})
     return hcat(map(d -> [d["parameters"][pd.key]..., d["parameters"][qd.key]...], data)...)
 end
 

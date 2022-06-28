@@ -12,11 +12,12 @@ abstract type Graph <: NeuralNetwork end
         drop_out::Float64 = 0.0,
         act::Function = Flux.relu,
         fact::Function = Flux.sigmoid,
-        conv::Type{T} = GeometricFlux.GCNConv,
+        conv::Type{C} = GeometricFlux.GCNConv,
+        encoding::Type{E} = MLOPF.Encoding,
         kwargs...,
     ) where {T<:GeometricFlux.AbstractGraphLayer}
 
-This function builds a graph neural network graph as a Flux.jl chain type.
+This function builds a graph neural network as a Flux.jl chain type.
     
     # Arguments:
     - `size_in::Int` -- Network input size (number of channels).
@@ -26,9 +27,10 @@ This function builds a graph neural network graph as a Flux.jl chain type.
 
 # Keywords:
     - `drop_out::Float64` -- Probability assigned to drop out layer. Defaults to 0.
-    - `act::Function` -- Activation function (on hidden layer). Defaults to ReLU.
-    - `fact::Function` -- Final activation function (on output layer). Defaults to Sigmoid.
-    - `conv::Type{T} ` -- Type of graph neural network layer from GeometricFlux.jl (src/layers/conv.jl) package.
+    - `act::Function` -- Activation function on hidden layers. Defaults to ReLU.
+    - `fact::Function` -- Final activation function on output layer. Defaults to Sigmoid.
+    - `conv::Type{C}` -- Type of graph neural network layer from GeometricFlux.jl (src/layers/conv.jl) package.
+    - `Encoding::Type{E}` -- Specify between local and global variable encoding architecture.
 
 # Outputs
     - `Flux.Chain`: Graph neural network.
@@ -46,7 +48,7 @@ function graph_neural_network(
 ) where {C<:GeometricFlux.AbstractGraphLayer,E<:MLOPF.Encoding}
     size(i::Int) = i == 0 ? size_in : ceil(Int, size_in / 4) * 4 * 2^(i - 1)
     chain = []
-    for i ∈ 1:(num_layers)
+    for i in 1:(num_layers)
         push!(chain, conv(size(i - 1) => size(i), act; kwargs...))
         push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.BatchNorm(layer.out)(x.nf))) # Check this
         push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.dropout(x.nf, drop_out)))
@@ -62,7 +64,7 @@ function graph_neural_network(
     return Flux.Chain(chain...)
 end
 
-function model_input(::Type{Graph}, data::Vector{MLOPF.ProcessedSample})
+function model_input(::Type{Graph}, data::Vector{Dict{String,Any}})
     return map(x -> FeaturedGraph(x["adjacency_matrix"], nf=hcat([x["parameters"][pd.key], x["parameters"][qd.key]]...)'), data)
 end
 

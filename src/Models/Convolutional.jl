@@ -27,8 +27,8 @@ This function builds a convolutional graph as a Flux.jl chain type.
 
 # Keywords:
     - `drop_out::Float64` -- Probability assigned to drop out layer. Defaults to 0.
-    - `act::Function` -- Activation function (on hidden layer). Defaults to ReLU.
-    - `fact::Function` -- Final activation function (on output layer). Defaults to Sigmoid.
+    - `act::Function` -- Activation function on hidden layers. Defaults to ReLU.
+    - `fact::Function` -- Final activation function on output layer. Defaults to Sigmoid.
     - `kernel::Tuple{Int}` -- Size of convolutional filter. Defaults to (3, 3).
     - `pad::Tuple{Int}` -- Specifies the number of elements added around the image borders. Defaults to (1, 1).
     - `pool::Tuple{Int}` -- Size of pooling layers used to reduce the dimensions of the feature maps. Defaults to (2, 2).
@@ -50,7 +50,7 @@ function convolutional_neural_network(
 )
     size(i::Int) = i == 0 ? size_in : ceil(Int, size_in / 4) * 4 * 2^(i - 1)
     chain = []
-    for i ∈ 1:(num_layers)
+    for i in 1:(num_layers)
         push!(chain, Flux.Conv(kernel, size(i - 1) => size(i), act; pad=pad, kwargs...))
         push!(chain, x -> Flux.maxpool(x, pool))
         push!(chain, x -> Flux.BatchNorm(size(x))(x))
@@ -61,7 +61,7 @@ function convolutional_neural_network(
     return Flux.Chain(chain...)
 end
 
-function model_input(::Type{Convolutional}, data::Vector{MLOPF.ProcessedSample})
+function model_input(::Type{Convolutional}, data::Vector{Dict{String,Any}})
     return cat(map(d -> cat(d["adjacency_matrix"], diagm(d["parameters"][pd.key]), diagm(d["parameters"][qd.key]), dims=3), data)..., dims=4)
 end
 
