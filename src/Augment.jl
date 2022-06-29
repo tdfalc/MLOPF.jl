@@ -25,7 +25,7 @@ end
 function augmented_parameter(pm::ACPPowerModel, bus::String, parameter::MLOPF.GenParameter)
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus)]
     return isempty(gens) ? [NaN] : map(gens) do gen
-        (pm.data["gen"]["$gen"][parameter.key] - pm.data["gen"]["$gen"][parameter.min]) /
+        (pm.solution["gen"]["$gen"][parameter.key] - pm.data["gen"]["$gen"][parameter.min]) /
         (pm.data["gen"]["$gen"][parameter.max] - pm.data["gen"]["$gen"][parameter.min])
     end
 end

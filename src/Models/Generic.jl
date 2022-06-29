@@ -44,7 +44,7 @@ function prepare_input_and_output(
 end
 
 function model_output(::Union{Type{Global},Type{Local}}, ::Type{Primals}, data::Vector{Dict{String,Any}})
-    return Float64.(hcat(map(d -> [d["parameters"][pg.key]..., d["parameters"][vm.key]...], data)...))
+    return Float32.(hcat(map(d -> [d["parameters"][pg.key]..., d["parameters"][vm.key]...], data)...))
 end
 
 function non_trivial_constraints(data::Vector{Dict{String,Any}})
@@ -56,7 +56,7 @@ end
 function model_output(
     ::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{Dict{String,Any}}, non_trivial_constraints::BitMatrix)
     congestion_regimes = hcat([d["congestion_regime"] for d in data]...)
-    return Float64.(congestion_regimes[non_trivial_constraints[:], :])
+    return Float32.(congestion_regimes[non_trivial_constraints[:], :])
 end
 
 "Custom bce - weight adjusted binary crossentropy to account for class imbalance."
@@ -117,7 +117,6 @@ function train!(
             Flux.testmode!(model)
             callback()
             train_loss, valid_loss = losses[end]
-            println(train_loss, " ", valid_loss)
             ProgressMeter.next!(prog; showvalues=[(:train_loss, train_loss), (:valid_loss, valid_loss)])
         end
     end

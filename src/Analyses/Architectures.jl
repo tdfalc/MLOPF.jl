@@ -59,7 +59,7 @@ for case in settings.PGLIB_OPF.cases
             target = MLOPF.NonTrivialConstraints
         end
 
-        @info "building dataset for $(architecture) architecture with $(encoding) encoding"
+        @info "building dataset for $(architecture.name.name) architecture with $(encoding.name.name) encoding with $(target.name.name) target"
         let data = @pipe MLDataUtils.splitobs(data, at=Tuple(settings.DATA.splits)) |>
                          MLOPF.prepare_input_and_output(_..., target, architecture, encoding, scaler) |>
                          MLOPF.prepare_minibatches(_, settings.PARAMETERS.batch_size)

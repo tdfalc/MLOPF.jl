@@ -8,26 +8,18 @@ MODEL:
   local: false
   ARCHITECTURE:
     fully_connected: true
-    convolutional: true
-    graph: true
+    convolutional: false
+    graph: false
 
 PGLIB_OPF:
   path: "/Projects/pglib-opf/"
   cases:
     - pglib_opf_case24_ieee_rts
-    # - pglib_opf_case30_ieee
-    # - pglib_opf_case39_epri
     # - pglib_opf_case57_ieee
-    # - pglib_opf_case73_ieee_rts
     # - pglib_opf_case118_ieee
-    # - pglib_opf_case162_ieee_dtc
-    # - pglib_opf_case300_ieee
-    # - pglib_opf_case588_sdet
-    # - pglib_opf_case1354_pegase
-    # - pglib_opf_case2853_sdet
 
 DATA:
-  num_samples: 50
+  num_samples: 500
   alpha: 0.2
   splits: 
     - 0.8
