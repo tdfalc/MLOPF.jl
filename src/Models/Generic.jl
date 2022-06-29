@@ -4,6 +4,7 @@ using Base: @kwdef
 using Flux
 using Flux.Data: DataLoader
 using CUDA
+using GraphSignals
 using Statistics
 
 abstract type Target end
@@ -42,12 +43,8 @@ function prepare_input_and_output(
     ]
 end
 
-function model_output(::Type{Local}, ::Type{Primals}, data::Vector{Dict{String,Any}})
-    return hcat(map(d -> hcat(d["parameters"][pg.key], d["parameters"][vm.key])', data))
-end
-
-function model_output(::Type{Global}, ::Type{Primals}, data::Vector{Dict{String,Any}})
-    return hcat(map(d -> [d["parameters"][pg.key]..., d["parameters"][vm.key]...], data)...)
+function model_output(::Union{Type{Global},Type{Local}}, ::Type{Primals}, data::Vector{Dict{String,Any}})
+    return Float32.(hcat(map(d -> [d["parameters"][pg.key]..., d["parameters"][vm.key]...], data)...))
 end
 
 function non_trivial_constraints(data::Vector{Dict{String,Any}})
@@ -59,7 +56,7 @@ end
 function model_output(
     ::Type{Global}, ::Type{NonTrivialConstraints}, data::Vector{Dict{String,Any}}, non_trivial_constraints::BitMatrix)
     congestion_regimes = hcat([d["congestion_regime"] for d in data]...)
-    return congestion_regimes[non_trivial_constraints[:], :]
+    return Float32.(congestion_regimes[non_trivial_constraints[:], :])
 end
 
 "Custom bce - weight adjusted binary crossentropy to account for class imbalance."
@@ -95,15 +92,23 @@ function train!(
     model = model |> device
     @info "commencing training procedure on $(device)"
 
-    losses, eval = [], (X, y) -> objective(Matrix(y), model(X))
+    function eval(X::Array{Float32}, y::Array{Float32})
+        return objective(y, model(X))
+    end
+
+    function eval(X::Vector{<:FeaturedGraph}, y::Array{Float32})
+        return objective(y, hcat(model.(X)...))
+    end
+
     callback = () -> push!(losses, [eval(train_set.data...); eval(valid_set.data...)])
+    losses = []
 
     prog = Progress(num_epochs; showspeed=true)
     elapsed_time = @elapsed begin
         opt, θ = ADAM(learning_rate), Flux.params(model)
         for _ = 1:num_epochs
             for (X, y) in train_set
-                X, y = Float32.(X |> device), Float32.(y |> device)
+                X, y = X |> device, y |> device
                 gradients = Flux.gradient(θ) do
                     eval(X, y)
                 end
@@ -123,7 +128,11 @@ function test(model::Flux.Chain, test_set::DataLoader, objective)
     loss = []
     elapsed_time = @elapsed begin
         for (X, y) in test_set
-            ŷ = model(X)
+            ŷ = try
+                model(X)
+            catch
+                hcat(model.(X)...)
+            end
             append!(loss, objective(y, ŷ))
         end
     end

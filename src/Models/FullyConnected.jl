@@ -50,9 +50,9 @@ function fully_connected_neural_network(
 end
 
 function model_input(::Type{FullyConnected}, data::Vector{Dict{String,Any}})
-    return hcat(map(d -> [d["parameters"][pd.key]..., d["parameters"][qd.key]...], data)...)
+    return Float32.(hcat(map(d -> [d["parameters"][pd.key]..., d["parameters"][qd.key]...], data)...))
 end
 
-function model_factory(::Type{FullyConnected}, size_in::Int, size_out::Int, num_layers::Int; kwargs...)
+function model_factory(::Type{FullyConnected}, size_in::Union{Int64,Tuple}, size_out::Int, num_layers::Int; kwargs...)
     return fully_connected_neural_network(size_in, size_out, num_layers; kwargs...)
 end

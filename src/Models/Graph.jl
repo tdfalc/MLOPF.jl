@@ -36,7 +36,7 @@ This function builds a graph neural network as a Flux.jl chain type.
     - `Flux.Chain`: Graph neural network.
 """
 function graph_neural_network(
-    size_in::Int64,
+    size_in::Tuple,
     size_out::Int64,
     num_layers::Int64;
     drop_out::Float64=0.0,
@@ -46,18 +46,20 @@ function graph_neural_network(
     encoding::Type{E}=MLOPF.Global,
     kwargs...
 ) where {C<:GeometricFlux.AbstractGraphLayer,E<:MLOPF.Encoding}
-    size(i::Int) = i == 0 ? size_in : ceil(Int64, size_in / 4) * 4 * 2^(i - 1)
+    channels, nodes = size_in
     chain = []
+    size(i::Int) = i == 0 ? channels : ceil(Int64, channels / 4) * 4 * 2^(i - 1)
     for i in 1:(num_layers)
         push!(chain, conv(size(i - 1) => size(i), act; kwargs...))
-        push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.BatchNorm(layer.out)(x.nf))) # Check this
+        push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.BatchNorm(size(i))(x.nf))) # Check this
         push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.dropout(x.nf, drop_out)))
     end
     if isa(encoding, Type{MLOPF.Global})
-        push!(chain, x -> vec(x.nf'))
-        push!(chain, x -> Flux.Dense(size(x), size_out, fact)(x))
+        push!(chain, x -> vec(x.nf))
+        push!(chain, Flux.Dense(nodes * size(num_layers), size_out, fact))
     elseif isa(encoding, Type{MLOPF.Local})
-        push!(chain, x -> conv(size(i - 1) => size_out, fact; kwargs...)(x).nf)
+        push!(chain, conv(size(num_layers) => size_out, act))
+        push!(chain, x -> vec(x.nf))
     else
         error("failed to construct network for unknown encoding")
     end
@@ -65,7 +67,8 @@ function graph_neural_network(
 end
 
 function model_input(::Type{Graph}, data::Vector{Dict{String,Any}})
-    return map(x -> FeaturedGraph(x["adjacency_matrix"], nf=hcat([x["parameters"][pd.key], x["parameters"][qd.key]]...)'), data)
+    return map(x -> FeaturedGraph(x["adjacency_matrix"],
+            nf=Float32.(hcat([x["parameters"][pd.key], x["parameters"][qd.key]]...)')), data)
 end
 
 function model_factory(::Type{Graph}, size_in::Union{Int64,Tuple}, size_out::Int64, num_layers::Int64; kwargs...)

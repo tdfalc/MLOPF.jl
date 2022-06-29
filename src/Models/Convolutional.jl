@@ -64,7 +64,8 @@ function convolutional_neural_network(
 end
 
 function model_input(::Type{Convolutional}, data::Vector{Dict{String,Any}})
-    return cat(map(d -> cat(d["adjacency_matrix"], diagm(d["parameters"][pd.key]), diagm(d["parameters"][qd.key]), dims=3), data)..., dims=4)
+    return Float32.(
+        cat(map(d -> cat(d["adjacency_matrix"], diagm(d["parameters"][pd.key]), diagm(d["parameters"][qd.key]), dims=3), data)..., dims=4))
 end
 
 function model_factory(::Type{Convolutional}, size_in::Union{Int64,Tuple}, size_out::Int64, num_layers::Int64; kwargs...)
