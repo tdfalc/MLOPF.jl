@@ -4,12 +4,12 @@ GENERAL:
     - 1
 
 MODEL:
-  regression: false 
+  regression: true 
   local: false
   ARCHITECTURE:
-    fully_connected: false
-    convolutional: false
-    graph: false
+    fully_connected: true
+    convolutional: true
+    graph: true
 
 PGLIB_OPF:
   path: "/Projects/pglib-opf/"
@@ -27,7 +27,7 @@ PGLIB_OPF:
     # - pglib_opf_case2853_sdet
 
 DATA:
-  num_samples: 1000
+  num_samples: 50
   alpha: 0.2
   splits: 
     - 0.8
