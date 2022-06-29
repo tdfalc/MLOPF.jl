@@ -33,7 +33,7 @@ function fully_connected_neural_network(
     size_in::Int,
     size_out::Int,
     num_layers::Int;
-    drop_out::Float64=0.0,
+    drop_out::Float64=0.3,
     act::Function=Flux.relu,
     fact::Function=Flux.sigmoid,
     kwargs...
@@ -42,7 +42,6 @@ function fully_connected_neural_network(
     chain = []
     for i in 1:(num_layers)
         push!(chain, Flux.Dense(size(i - 1), size(i), act))
-        push!(chain, x -> Flux.BatchNorm(size(i))(x))
         push!(chain, Flux.Dropout(drop_out))
     end
     push!(chain, Flux.Dense(size(num_layers), size(num_layers + 1), fact))
@@ -53,6 +52,6 @@ function model_input(::Type{FullyConnected}, data::Vector{Dict{String,Any}})
     return Float32.(hcat(map(d -> [d["parameters"][pd.key]..., d["parameters"][qd.key]...], data)...))
 end
 
-function model_factory(::Type{FullyConnected}, size_in::Union{Int64,Tuple}, size_out::Int, num_layers::Int; kwargs...)
+function model_factory(::Type{FullyConnected}, size_in::Union{Int64,Tuple}, size_out::Int; num_layers::Int = 1, kwargs...)
     return fully_connected_neural_network(size_in, size_out, num_layers; kwargs...)
 end

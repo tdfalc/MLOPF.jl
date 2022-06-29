@@ -43,20 +43,19 @@ function convolutional_neural_network(
     drop_out::Float64=0.0,
     act=Flux.relu,
     fact=Flux.sigmoid,
-    kernel::Tuple{Int64,Int64}=(3, 3),
-    pad::Tuple{Int64,Int64}=(1, 1),
-    pool::Tuple{Int64,Int64}=(2, 2),
+    kernel::Int64=3,
+    pad::Int64=1,
+    pool::Int64=2,
     kwargs...
 )
     width, _, channels = size_in
     size(i::Int) = i == 0 ? channels : Int(ceil(Int64, channels / 4) * 4 * 2^(i - 1))
     chain = []
     for i in 1:(num_layers)
-        push!(chain, Flux.Conv(kernel, size(i - 1) => size(i), act; pad=pad, kwargs...))
-        push!(chain, x -> Flux.maxpool(x, pool))
-        push!(chain, x -> Flux.BatchNorm(size(i))(x))
+        push!(chain, Flux.Conv((kernel, kernel), size(i - 1) => size(i), act; pad=(pad, pad), kwargs...))
+        push!(chain, x -> Flux.maxpool(x, (pool, pool)))
         push!(chain, Flux.Dropout(drop_out))
-        width = (1 + (width - kernel[1] + 2pad[1])) / pool[1]
+        width = (1 + (width - kernel + 2pad)) / pool
     end
     push!(chain, x -> reshape(x, :, Base.size(x, 4)))
     push!(chain, Flux.Dense(Int(floor(width)^2) * size(num_layers), size_out, fact))
@@ -68,6 +67,6 @@ function model_input(::Type{Convolutional}, data::Vector{Dict{String,Any}})
         cat(map(d -> cat(d["adjacency_matrix"], diagm(d["parameters"][pd.key]), diagm(d["parameters"][qd.key]), dims=3), data)..., dims=4))
 end
 
-function model_factory(::Type{Convolutional}, size_in::Union{Int64,Tuple}, size_out::Int64, num_layers::Int64; kwargs...)
+function model_factory(::Type{Convolutional}, size_in::Union{Int64,Tuple}, size_out::Int64; num_layers::Int = 1, kwargs...)
     return convolutional_neural_network(size_in, size_out, num_layers; kwargs...)
 end

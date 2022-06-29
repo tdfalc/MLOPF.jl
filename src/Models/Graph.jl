@@ -51,7 +51,6 @@ function graph_neural_network(
     size(i::Int) = i == 0 ? channels : ceil(Int64, channels / 4) * 4 * 2^(i - 1)
     for i in 1:(num_layers)
         push!(chain, conv(size(i - 1) => size(i), act; kwargs...))
-        push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.BatchNorm(size(i))(x.nf))) # Check this
         push!(chain, x -> FeaturedGraph(x.graph.S, nf=Flux.dropout(x.nf, drop_out)))
     end
     if isa(encoding, Type{MLOPF.Global})
@@ -71,6 +70,6 @@ function model_input(::Type{Graph}, data::Vector{Dict{String,Any}})
             nf=Float32.(hcat([x["parameters"][pd.key], x["parameters"][qd.key]]...)')), data)
 end
 
-function model_factory(::Type{Graph}, size_in::Union{Int64,Tuple}, size_out::Int64, num_layers::Int64; kwargs...)
+function model_factory(::Type{Graph}, size_in::Union{Int64,Tuple}, size_out::Int64; num_layers::Int = 1, kwargs...)
     return graph_neural_network(size_in, size_out, num_layers; kwargs...)
 end

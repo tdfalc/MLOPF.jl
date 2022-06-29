@@ -32,12 +32,12 @@ function prepare_input_and_output(
 ) where {T<:Target,A<:NeuralNetwork,E<:Encoding}
     return [
         (
-            MLOPF.model_input(arch, MLOPF.normalise_load(Vector(set), scaler)),
+            MLOPF.model_input(arch, MLOPF.normalise(Vector(set), scaler, (pd, qd))),
             try
-                MLOPF.model_output(encoding, target, Vector(set))
+                MLOPF.model_output(encoding, target, MLOPF.normalise(Vector(set), scaler, (pg, vm)))
             catch
                 nt_constraints = non_trivial_constraints(Vector(train_set))
-                MLOPF.model_output(encoding, target, Vector(set), nt_constraints)
+                MLOPF.model_output(encoding, target, MLOPF.normalise(Vector(set), scaler, (pg, vm)), nt_constraints)
             end
         ) for set in (train_set, valid_set, test_set)
     ]
@@ -67,7 +67,7 @@ end
 "Custom mse - initalised with bit vector mask to remove redunant rows when evaluating loss."
 function mse(mask::BitVector)
     return (y, ŷ) -> Statistics.mean(
-        ((y, ŷ) -> sum((y[mask] - ŷ[mask]) .^ 2) / size(y[mask], 2)).((eachcol.((y, ŷ)))...),
+        ((y, ŷ) -> sum((y[mask] - ŷ[mask]) .^ 2) / sum(mask)).((eachcol.((y, ŷ)))...),
     )
 end
 

@@ -1,9 +1,3 @@
-"""Augment network parameters.
-
-    Note: voltage magnitude and active and reactive generator outputs are normalised using physical limits to 
-    ensure implicit satisfaction of lower/upper bound inequality constraints.
-"""
-
 using PowerModels
 using MLOPF
 
@@ -16,17 +10,15 @@ end
 
 "Returns the normalised bus parameter, repeated num generator times."
 function augmented_parameter(pm::ACPPowerModel, bus::String, parameter::MLOPF.BusParameter)
-    minimum, maximum = getindex.(Ref(pm.data["bus"][bus]), (parameter.min, parameter.max))
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus)]
-    return fill((pm.solution["bus"][bus][parameter.key] - minimum) / (maximum - minimum), max(1, length(gens)))
+    return fill(pm.solution["bus"][bus][parameter.key], max(1, length(gens)))
 end
 
 "Returns the normalised power (specified component) for each generator on the bus."
 function augmented_parameter(pm::ACPPowerModel, bus::String, parameter::MLOPF.GenParameter)
     gens = MLOPF.reference(pm, :bus_gens)[parse(Int, bus)]
     return isempty(gens) ? [NaN] : map(gens) do gen
-        (pm.solution["gen"]["$gen"][parameter.key] - pm.data["gen"]["$gen"][parameter.min]) /
-        (pm.data["gen"]["$gen"][parameter.max] - pm.data["gen"]["$gen"][parameter.min])
+        pm.solution["gen"]["$gen"][parameter.key] 
     end
 end
 

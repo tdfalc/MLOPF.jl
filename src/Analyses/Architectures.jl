@@ -37,32 +37,32 @@ for case in settings.PGLIB_OPF.cases
 
     for architecture in [MLOPF.FullyConnected, MLOPF.Convolutional, MLOPF.Graph]
 
-        if isa(architecture, Type{MLOPF.FullyConnected}) & !settings.MODEL.ARCHITECTURE.fully_connected
+        if isa(architecture, Type{MLOPF.FullyConnected}) & !settings.PARAMETERS.FULLY_CONNECTED.active
             continue
         end
-        if isa(architecture, Type{MLOPF.Convolutional}) & !settings.MODEL.ARCHITECTURE.convolutional
+        if isa(architecture, Type{MLOPF.Convolutional}) & !settings.PARAMETERS.CONVOLUTIONAL.active
             continue
         end
-        if isa(architecture, Type{MLOPF.Graph}) & !settings.MODEL.ARCHITECTURE.graph
+        if isa(architecture, Type{MLOPF.Graph}) & !settings.PARAMETERS.GRAPH.active
             continue
         end
 
-        if settings.MODEL.local
+        if settings.PARAMETERS.GLOBAL.local
             encoding = MLOPF.Local
         else
             encoding = MLOPF.Global
         end
 
-        if settings.MODEL.regression
+        if settings.PARAMETERS.GLOBAL.regression
             target = MLOPF.Primals
         else
             target = MLOPF.NonTrivialConstraints
         end
 
-        @info "building dataset for $(architecture.name.name) architecture with $(encoding.name.name) encoding with $(target.name.name) target"
+        @info "building dataset for $(architecture.name.name) architecture with $(encoding.name.name) encoding and $(target.name.name) target"
         let data = @pipe MLDataUtils.splitobs(data, at=Tuple(settings.DATA.splits)) |>
                          MLOPF.prepare_input_and_output(_..., target, architecture, encoding, scaler) |>
-                         MLOPF.prepare_minibatches(_, settings.PARAMETERS.batch_size)
+                         MLOPF.prepare_minibatches(_, settings.PARAMETERS.GLOBAL.batch_size)
 
             results = Dict()
             for seed in settings.GENERAL.seeds
@@ -72,21 +72,27 @@ for case in settings.PGLIB_OPF.cases
                 train_set, valid_set, test_set = deepcopy(data)
                 X_train, y_train = train_set.data
 
+                parse_kwargs(config) = Dict{Symbol,Any}(pairs(config))
+
                 if isa(architecture, Type{MLOPF.FullyConnected})
                     size_in = size(X_train, 1)
+                    kwargs = parse_kwargs(settings.PARAMETERS.FULLY_CONNECTED.CONFIG)
                 end
                 if isa(architecture, Type{MLOPF.Convolutional})
                     size_in = size(X_train[:, :, :, 1])
+                    kwargs = parse_kwargs(settings.PARAMETERS.CONVOLUTIONAL.CONFIG)
                 end
                 if isa(architecture, Type{MLOPF.Graph})
                     size_in = size(X_train[1].nf)
+                    kwargs = parse_kwargs(settings.PARAMETERS.GRAPH.CONFIG)
+                    kwargs[:encoding] = encoding
                 end
 
                 size_out = size(y_train, 1)
 
-                model = MLOPF.model_factory(architecture, size_in, size_out, settings.PARAMETERS.num_layers)
+                model = MLOPF.model_factory(architecture, size_in, size_out; kwargs...)
                 objective = target == MLOPF.Primals ? MLOPF.mse(@. !isnan(y_train[:, 1])) : MLOPF.bce()
-                device = MLOPF.instantiate_device(settings.PARAMETERS.use_cuda)
+                device = MLOPF.instantiate_device(settings.PARAMETERS.GLOBAL.use_cuda)
 
                 train_time, (train_loss, valid_loss) = MLOPF.train!(
                     model,
@@ -94,8 +100,8 @@ for case in settings.PGLIB_OPF.cases
                     train_set,
                     valid_set,
                     objective;
-                    learning_rate=float(settings.PARAMETERS.learning_rate),
-                    num_epochs=settings.PARAMETERS.num_epochs
+                    learning_rate=float(settings.PARAMETERS.GLOBAL.learning_rate),
+                    num_epochs=settings.PARAMETERS.GLOBAL.num_epochs
                 )
 
                 # TODO: We probably want to record the un-normalised test loss as well.
